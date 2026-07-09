@@ -173,22 +173,44 @@
         background: var(--rouge-clair);
         border: 1.5px solid #ef9a9a;
         border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 8px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
         font-size: 13.5px;
-        white-space: nowrap;
-        overflow-x: auto;
     }
-    .alerte-item b { color: var(--rouge); }
+    .alerte-item b { color: var(--rouge); font-size: 15px; }
+    .alerte-ligne1 {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .alerte-unite {
+        color: var(--gris-txt);
+        font-size: 12.5px;
+    }
+    .alerte-texture-badge {
+        display: inline-block;
+        background: var(--bleu-fonce);
+        color: white;
+        border-radius: 5px;
+        padding: 1px 7px;
+        font-size: 11px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+    .alerte-detail {
+        margin-top: 6px;
+        font-size: 11.5px;
+        color: var(--gris-txt);
+    }
     .alerte-mot {
         display: inline-block;
         background: var(--rouge);
         color: white;
         border-radius: 6px;
-        padding: 1px 7px;
-        font-size: 12px;
+        padding: 2px 10px;
+        font-size: 13px;
         font-weight: 700;
-        margin-left: 4px;
     }
     .ok-item {
         background: var(--vert-clair);
@@ -329,7 +351,7 @@
                     onkeydown="gererToucheIngredient(event)">
             </div>
             <div style="font-size:11.5px;color:var(--gris-txt);margin-top:6px;">
-                Appuyez sur <b>Entrée</b>, <b>virgule</b> ou <b>espace</b> après chaque ingrédient pour l'ajouter.
+                Appuyez sur <b>Entrée</b> ou tapez une <b>virgule</b> après chaque ingrédient pour l'ajouter.
             </div>
             <button class="btn-action" style="margin-top:12px;" onclick="verifierMenu()">🔍 Vérifier</button>
         </div>
@@ -405,10 +427,11 @@
         }
     }
 
-    // Entrée, virgule ou espace = valider l'ingrédient en cours et l'ajouter en étiquette
+    // Entrée ou virgule = valider l'ingrédient en cours et l'ajouter en étiquette
+    // (l'espace ne valide plus, pour permettre les noms composés comme "choux de Bruxelles")
     function gererToucheIngredient(event) {
         var input = document.getElementById("inputIngredients");
-        if (event.key === "Enter" || event.key === "," || event.key === " ") {
+        if (event.key === "Enter" || event.key === ",") {
             event.preventDefault();
             ajouterIngredientDepuisTexte(input.value);
             input.value = "";
@@ -642,12 +665,15 @@
 
         var html = "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " alerte(s) détectée(s)</div>";
         alertes.forEach(function (a) {
-            var texStyle = a.texture !== "Normal" ? "font-weight:700;color:var(--bleu-fonce);" : "";
             html += "<div class='alerte-item'>" +
-                "<span style='" + texStyle + "'>" + escapeHtml(a.texture) + "</span>, " +
-                "<b>Ch. " + escapeHtml(a.chambre) + "</b>" + (a.unite ? " — " + escapeHtml(a.unite) : "") +
-                " — " + escapeHtml(a.sources.join(" / ")) +
+                "<div class='alerte-ligne1'>" +
+                "<b>Ch. " + escapeHtml(a.chambre) + "</b>" +
+                (a.unite ? "<span class='alerte-unite'>— " + escapeHtml(a.unite) + "</span>" : "") +
                 "<span class='alerte-mot'>" + escapeHtml(a.mot) + "</span>" +
+                "</div>" +
+                (a.texture !== "Normal" ? "<div class='alerte-texture-badge'>" + escapeHtml(a.texture) + "</div>" : "") +
+                "<div class='alerte-detail'>Texture : " + escapeHtml(a.texture) +
+                " &nbsp;•&nbsp; " + escapeHtml(a.sources.join(" / ")) + "</div>" +
                 "</div>";
         });
         zone.innerHTML = html;
