@@ -199,6 +199,20 @@
     .badge-tex {
         font-weight: 700;
     }
+    .puce-ingredient {
+        background: var(--bleu-clair);
+        color: var(--bleu-fonce);
+        border: 1.5px solid var(--gris-bord);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .puce-vide {
+        color: var(--gris-txt);
+        font-size: 12.5px;
+        font-style: italic;
+    }
     footer {
         text-align: center;
         font-size: 11.5px;
@@ -236,7 +250,8 @@
     <div class="panneau" id="panneau-verifier">
         <div class="carte">
             <label class="form-label">Ingrédients du menu (séparés par des virgules)</label>
-            <textarea id="inputIngredients" rows="3" placeholder="Ex : riz, poisson, piment"></textarea>
+            <textarea id="inputIngredients" rows="3" placeholder="Ex : riz, poisson, piment" oninput="afficherApercuIngredients()"></textarea>
+            <div id="apercuIngredients" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
             <button class="btn-action" style="margin-top:12px;" onclick="verifierMenu()">🔍 Vérifier</button>
         </div>
         <div class="carte" id="zoneResultatVerif" style="display:none;"></div>
@@ -274,6 +289,59 @@
             .toString()
             .toLowerCase()
             .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // enlève les accents
+    }
+
+    // Aperçu en direct des ingrédients détectés (aide à repérer une virgule oubliée)
+    function afficherApercuIngredients() {
+        var texte = document.getElementById("inputIngredients").value || "";
+        var ingredients = texte.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+        var zone = document.getElementById("apercuIngredients");
+        if (ingredients.length === 0) {
+            zone.innerHTML = "";
+            return;
+        }
+        zone.innerHTML = ingredients.map(function (ing) {
+            return "<span class='puce-ingredient'>" + escapeHtml(ing) + "</span>";
+        }).join("");
+    }
+
+    // Distance de Levenshtein — mesure le nombre de lettres différentes entre 2 mots
+    function distanceLevenshtein(a, b) {
+        var m = a.length, n = b.length;
+        if (m === 0) return n;
+        if (n === 0) return m;
+        var d = [];
+        for (var i = 0; i <= m; i++) d.push([i]);
+        for (var j = 0; j <= n; j++) d[0][j] = j;
+        for (i = 1; i <= m; i++) {
+            for (j = 1; j <= n; j++) {
+                var cout = a[i - 1] === b[j - 1] ? 0 : 1;
+                d[i][j] = Math.min(
+                    d[i - 1][j] + 1,      // suppression
+                    d[i][j - 1] + 1,      // insertion
+                    d[i - 1][j - 1] + cout // substitution
+                );
+            }
+        }
+        return d[m][n];
+    }
+
+    // Vérifie si l'ingrédient (avec tolérance à 1 lettre près) apparaît dans le texte
+    // Ne modifie jamais ce que l'utilisateur a saisi ni les données — comparaison uniquement.
+    function contientAvecTolerance(texteNorm, ingredientNorm) {
+        if (!texteNorm || !ingredientNorm) return false;
+        // Correspondance exacte (sous-chaîne) — cas le plus courant
+        if (texteNorm.indexOf(ingredientNorm) !== -1) return true;
+        // Tolérance aux fautes de frappe : compare l'ingrédient à chaque mot du texte
+        // Seuil : mots de 4+ lettres tolèrent 1 différence ; mots de 7+ lettres tolèrent 2
+        if (ingredientNorm.length < 4) return false;
+        var seuil = ingredientNorm.length >= 7 ? 2 : 1;
+        var mots = texteNorm.split(/[^a-z0-9]+/).filter(Boolean);
+        for (var i = 0; i < mots.length; i++) {
+            if (Math.abs(mots[i].length - ingredientNorm.length) > seuil) continue;
+            if (distanceLevenshtein(mots[i], ingredientNorm) <= seuil) return true;
+        }
+        return false;
     }
 
     async function init() {
@@ -413,26 +481,44 @@
         }
 
         var presents = residentsPresents();
-        var alertes = [];
+        var alertesMap = {}; // clé = chambre + mot -> alerte fusionnée
+
+        // Vider le champ et l'aperçu maintenant que les ingrédients ont été récupérés,
+        // pour permettre une nouvelle saisie directe sans avoir à effacer
+        document.getElementById("inputIngredients").value = "";
+        afficherApercuIngredients();
 
         presents.forEach(function (r) {
-            var regime = normaliser(extraireRegime(r));
-            var aversion = normaliser(r._rawAversion || "");
+            var regimeBrut = extraireRegime(r);
+            var aversionBrut = r._rawAversion || "";
+            var regime = normaliser(regimeBrut);
+            var aversion = normaliser(aversionBrut);
             var chambre = r.chambre || "?";
             var unite = r.unite || "";
+            var texMidi = r.textureMidi || "Normal";
+            var texSoir = r.textureSoir || "Normal";
+            var texteTexture = texMidi === texSoir ? texMidi : ("Midi: " + texMidi + " / Soir: " + texSoir);
 
             ingredients.forEach(function (ing) {
                 var ingNorm = normaliser(ing);
                 if (!ingNorm) return;
 
-                if (regime && regime.indexOf(ingNorm) !== -1) {
-                    alertes.push({ chambre: chambre, unite: unite, mot: ing, type: "régime : " + extraireRegime(r) });
+                var sources = [];
+                if (contientAvecTolerance(regime, ingNorm)) sources.push("régime : " + regimeBrut);
+                if (contientAvecTolerance(aversion, ingNorm)) sources.push("aversion : " + aversionBrut);
+                if (sources.length === 0) return;
+
+                var cle = chambre + "|||" + ing.toLowerCase();
+                if (!alertesMap[cle]) {
+                    alertesMap[cle] = { chambre: chambre, unite: unite, mot: ing, texture: texteTexture, sources: [] };
                 }
-                if (aversion && aversion.indexOf(ingNorm) !== -1) {
-                    alertes.push({ chambre: chambre, unite: unite, mot: ing, type: "aversion : " + (r._rawAversion || "") });
-                }
+                sources.forEach(function (s) {
+                    if (alertesMap[cle].sources.indexOf(s) === -1) alertesMap[cle].sources.push(s);
+                });
             });
         });
+
+        var alertes = Object.keys(alertesMap).map(function (k) { return alertesMap[k]; });
 
         if (alertes.length === 0) {
             zone.innerHTML = "<div class='ok-item'>✅ Aucune incompatibilité détectée avec les régimes et aversions des résidents présents.</div>";
@@ -441,9 +527,11 @@
 
         var html = "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " alerte(s) détectée(s)</div>";
         alertes.forEach(function (a) {
+            var texStyle = a.texture !== "Normal" ? "font-weight:700;color:var(--bleu-fonce);" : "";
             html += "<div class='alerte-item'>" +
+                "<span style='" + texStyle + "'>" + escapeHtml(a.texture) + "</span>, " +
                 "<b>Ch. " + escapeHtml(a.chambre) + "</b>" + (a.unite ? " — " + escapeHtml(a.unite) : "") +
-                " — " + escapeHtml(a.type) +
+                " — " + escapeHtml(a.sources.join(" / ")) +
                 "<span class='alerte-mot'>" + escapeHtml(a.mot) + "</span>" +
                 "</div>";
         });
