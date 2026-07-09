@@ -285,6 +285,57 @@
         line-height: 1;
         padding: 0 2px;
     }
+    .liste-suggestions {
+        border: 1.5px solid var(--gris-bord);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        background: white;
+        max-height: 220px;
+        overflow-y: auto;
+        margin-top: -1px;
+    }
+    .suggestion-item {
+        padding: 10px 12px;
+        font-size: 13.5px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--gris-fond);
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover, .suggestion-item:active {
+        background: var(--bleu-clair);
+    }
+    .btn-imprimer {
+        background: white;
+        color: var(--bleu-fonce);
+        border: 1.5px solid var(--gris-bord);
+    }
+    @media print {
+        header .onglets, .onglets, footer,
+        #panneau-verifier .carte:first-child,
+        #btnOuvrirPdf, .btn-imprimer {
+            display: none !important;
+        }
+        body { background: white; }
+        .carte { border: none; padding: 0; }
+    }
+    /* Force l'affichage en paysage sur téléphone (plus large que haut),
+       même si le téléphone est tenu à la verticale */
+    @media screen and (max-width: 820px) and (orientation: portrait) {
+        html {
+            transform: rotate(-90deg);
+            transform-origin: top left;
+            width: 100vh;
+            height: 100vw;
+            overflow-x: hidden;
+            position: absolute;
+            top: 100%;
+            left: 0;
+        }
+        body {
+            width: 100vh;
+            min-height: 100vw;
+        }
+    }
     footer {
         text-align: center;
         font-size: 11.5px;
@@ -334,6 +385,7 @@
 
     <!-- PANNEAU 1 : FEUILLE REGIMES -->
     <div class="panneau actif" id="panneau-regimes">
+        <button class="btn-action btn-imprimer" onclick="window.print()" style="margin-bottom:10px;">🖨️ Imprimer</button>
         <div class="carte" id="zoneRegimes">
             <div class="msg-chargement">Chargement des données…</div>
         </div>
@@ -342,16 +394,18 @@
     <!-- PANNEAU 2 : VERIFIER UN MENU -->
     <div class="panneau" id="panneau-verifier">
         <div class="carte">
-            <label class="form-label">Ingrédients du menu (séparés par des virgules)</label>
             <label class="form-label">Ingrédients du menu</label>
             <div id="zoneSaisieIngredients" class="zone-saisie-tags" onclick="document.getElementById('inputIngredients').focus()">
                 <span id="apercuIngredients"></span>
                 <input type="text" id="inputIngredients" placeholder="Tapez un ingrédient puis Entrée…"
-                    oninput="gererSaisieVirgule()"
-                    onkeydown="gererToucheIngredient(event)">
+                    autocomplete="off"
+                    oninput="gererSaisieVirgule(); afficherSuggestions();"
+                    onkeydown="gererToucheIngredient(event)"
+                    onblur="masquerSuggestionsDifferees()">
             </div>
+            <div id="listeSuggestions" class="liste-suggestions" style="display:none;"></div>
             <div style="font-size:11.5px;color:var(--gris-txt);margin-top:6px;">
-                Appuyez sur <b>Entrée</b> ou tapez une <b>virgule</b> après chaque ingrédient pour l'ajouter.
+                Appuyez sur <b>Entrée</b> ou tapez une <b>virgule</b> après chaque ingrédient pour l'ajouter, ou choisissez dans la liste proposée.
             </div>
             <button class="btn-action" style="margin-top:12px;" onclick="verifierMenu()">🔍 Vérifier</button>
         </div>
@@ -435,10 +489,75 @@
             event.preventDefault();
             ajouterIngredientDepuisTexte(input.value);
             input.value = "";
+            masquerSuggestions();
         } else if (event.key === "Backspace" && input.value === "" && _ingredientsSaisis.length > 0) {
             // Efface la dernière étiquette si le champ est vide et qu'on appuie sur Retour arrière
             retirerIngredient(_ingredientsSaisis.length - 1);
         }
+    }
+
+    // ===== AUTOCOMPLÉTION à partir des régimes/aversions des résidents présents =====
+    // Construit la liste unique des mots/expressions issus des régimes et aversions
+    function listeMotsRegimesAversions() {
+        var presents = residentsPresents();
+        var motsVus = {};
+        var liste = [];
+        presents.forEach(function (r) {
+            var regime = extraireRegime(r);
+            var aversion = r._rawAversion || "";
+            [regime, aversion].forEach(function (champ) {
+                if (!champ) return;
+                champ.split(",").map(function (m) { return m.trim(); }).filter(Boolean).forEach(function (mot) {
+                    var cle = mot.toLowerCase();
+                    if (mot.toLowerCase() !== "aucun" && !motsVus[cle]) {
+                        motsVus[cle] = true;
+                        liste.push(mot);
+                    }
+                });
+            });
+        });
+        return liste;
+    }
+
+    var _timeoutMasquerSuggestions = null;
+
+    function afficherSuggestions() {
+        var input = document.getElementById("inputIngredients");
+        var saisie = normaliser(input.value.trim());
+        var zone = document.getElementById("listeSuggestions");
+        if (saisie.length < 2) {
+            zone.style.display = "none";
+            return;
+        }
+        var correspondances = listeMotsRegimesAversions().filter(function (mot) {
+            return normaliser(mot).indexOf(saisie) !== -1;
+        }).slice(0, 8);
+
+        if (correspondances.length === 0) {
+            zone.style.display = "none";
+            return;
+        }
+        zone.innerHTML = correspondances.map(function (mot) {
+            return "<div class='suggestion-item' onmousedown='selectionnerSuggestion(\"" +
+                mot.replace(/"/g, "&quot;").replace(/'/g, "\\'") + "\")'>" + escapeHtml(mot) + "</div>";
+        }).join("");
+        zone.style.display = "block";
+    }
+
+    function selectionnerSuggestion(mot) {
+        ajouterIngredientDepuisTexte(mot);
+        document.getElementById("inputIngredients").value = "";
+        masquerSuggestions();
+        document.getElementById("inputIngredients").focus();
+    }
+
+    function masquerSuggestions() {
+        document.getElementById("listeSuggestions").style.display = "none";
+    }
+
+    // Léger délai pour laisser le clic sur une suggestion s'exécuter avant la perte de focus
+    function masquerSuggestionsDifferees() {
+        _timeoutMasquerSuggestions = setTimeout(masquerSuggestions, 150);
     }
 
     // Distance de Levenshtein — conservée mais désormais inutilisée pour la comparaison
@@ -688,7 +807,8 @@
             return;
         }
 
-        var html = "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " alerte(s) détectée(s)</div>";
+        var html = "<button class='btn-action btn-imprimer' onclick='window.print()' style='margin-bottom:12px;'>🖨️ Imprimer</button>" +
+            "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " alerte(s) détectée(s)</div>";
         alertes.forEach(function (a) {
             html += "<div class='alerte-item'>" +
                 "<div class='alerte-ligne1'>" +
