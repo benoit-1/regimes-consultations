@@ -239,66 +239,66 @@
         font-size: 12.5px;
         font-style: italic;
     }
-    .zone-saisie-tags {
-        border: 1.5px solid var(--gris-bord);
-        border-radius: 8px;
-        padding: 8px 10px;
+    .ligne-saisie {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 6px;
-        min-height: 46px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--bleu);
         cursor: text;
-        background: white;
-    }
-    .zone-saisie-tags:focus-within {
-        border-color: var(--bleu);
+        min-height: 28px;
     }
     #inputIngredients {
         border: none;
         outline: none;
         flex: 1;
-        min-width: 140px;
-        font-size: 14.5px;
-        padding: 4px 2px;
+        min-width: 100px;
+        font-size: 15px;
+        background: transparent;
+        padding: 0;
     }
-    .puce-tag {
-        background: var(--bleu-clair);
-        color: var(--bleu-fonce);
-        border: 1.5px solid var(--gris-bord);
-        border-radius: 20px;
-        padding: 4px 8px 4px 12px;
-        font-size: 13px;
-        font-weight: 700;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-    }
-    .puce-tag button {
-        background: none;
-        border: none;
+    .mot-choisi {
         color: var(--bleu-fonce);
         font-size: 15px;
         font-weight: 700;
         cursor: pointer;
-        line-height: 1;
-        padding: 0 2px;
+    }
+    .mot-separateur {
+        color: var(--gris-txt);
+        font-size: 15px;
     }
     .liste-suggestions {
-        border: 1.5px solid var(--gris-bord);
-        border-top: none;
-        border-radius: 0 0 8px 8px;
+        margin-top: 2px;
+    }
+    .jours-semaine {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .jour-btn {
+        flex: 1;
+        min-width: 40px;
         background: white;
-        max-height: 220px;
-        overflow-y: auto;
-        margin-top: -1px;
+        border: 1.5px solid var(--gris-bord);
+        border-radius: 8px;
+        padding: 10px 4px;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--gris-txt);
+        cursor: pointer;
+    }
+    .jour-btn.actif {
+        background: var(--bleu-fonce);
+        border-color: var(--bleu-fonce);
+        color: white;
     }
     .suggestion-item {
-        padding: 10px 12px;
-        font-size: 13.5px;
+        padding: 12px 4px;
+        font-size: 14.5px;
         cursor: pointer;
         border-bottom: 1px solid var(--gris-fond);
+        color: #263238;
     }
     .suggestion-item:last-child { border-bottom: none; }
     .suggestion-item:hover, .suggestion-item:active {
@@ -376,15 +376,23 @@
 <div class="conteneur">
 
     <div class="onglets">
-        <button class="onglet-btn actif" data-onglet="regimes" onclick="changerOnglet('regimes')">📋 Feuille Régimes</button>
+        <button class="onglet-btn" data-onglet="regimes" onclick="changerOnglet('regimes')">📋 Feuille Régimes</button>
         <button class="onglet-btn" data-onglet="verifier" onclick="changerOnglet('verifier')">🔍 Vérifier un menu</button>
         <button class="onglet-btn" data-onglet="texture" onclick="changerOnglet('texture')">📄 Rappel Texture</button>
     </div>
 
     <div id="msgGlobal"></div>
 
+    <!-- ECRAN D'ACCUEIL : affiché avant tout choix -->
+    <div class="panneau actif" id="panneau-accueil">
+        <div class="carte" style="text-align:center;padding:36px 20px;">
+            <div style="font-size:40px;margin-bottom:10px;">👆</div>
+            <div style="font-size:14px;color:var(--gris-txt);">Choisissez une option ci-dessus pour commencer.</div>
+        </div>
+    </div>
+
     <!-- PANNEAU 1 : FEUILLE REGIMES -->
-    <div class="panneau actif" id="panneau-regimes">
+    <div class="panneau" id="panneau-regimes">
         <button class="btn-action btn-imprimer" onclick="window.print()" style="margin-bottom:10px;">🖨️ Imprimer</button>
         <div class="carte" id="zoneRegimes">
             <div class="msg-chargement">Chargement des données…</div>
@@ -394,20 +402,33 @@
     <!-- PANNEAU 2 : VERIFIER UN MENU -->
     <div class="panneau" id="panneau-verifier">
         <div class="carte">
-            <label class="form-label">Ingrédients du menu</label>
-            <div id="zoneSaisieIngredients" class="zone-saisie-tags" onclick="document.getElementById('inputIngredients').focus()">
+            <label class="form-label">Jour du menu (sauvegarde 4 jours)</label>
+            <div class="jours-semaine">
+                <button class="jour-btn" data-jour="lundi" onclick="selectionnerJour('lundi')">Lun</button>
+                <button class="jour-btn" data-jour="mardi" onclick="selectionnerJour('mardi')">Mar</button>
+                <button class="jour-btn" data-jour="mercredi" onclick="selectionnerJour('mercredi')">Mer</button>
+                <button class="jour-btn" data-jour="jeudi" onclick="selectionnerJour('jeudi')">Jeu</button>
+                <button class="jour-btn" data-jour="vendredi" onclick="selectionnerJour('vendredi')">Ven</button>
+                <button class="jour-btn" data-jour="samedi" onclick="selectionnerJour('samedi')">Sam</button>
+                <button class="jour-btn" data-jour="dimanche" onclick="selectionnerJour('dimanche')">Dim</button>
+            </div>
+            <div id="msgJour" style="font-size:11.5px;color:var(--gris-txt);margin:8px 0 4px;min-height:14px;"></div>
+
+            <label class="form-label" style="margin-top:10px;">Tapez un ingrédient</label>
+            <div id="zoneSaisieIngredients" class="ligne-saisie" onclick="document.getElementById('inputIngredients').focus()">
                 <span id="apercuIngredients"></span>
-                <input type="text" id="inputIngredients" placeholder="Tapez un ingrédient puis Entrée…"
+                <input type="text" id="inputIngredients" placeholder="Tapez ici…"
                     autocomplete="off"
                     oninput="gererSaisieVirgule(); afficherSuggestions();"
                     onkeydown="gererToucheIngredient(event)"
                     onblur="masquerSuggestionsDifferees()">
             </div>
             <div id="listeSuggestions" class="liste-suggestions" style="display:none;"></div>
-            <div style="font-size:11.5px;color:var(--gris-txt);margin-top:6px;">
-                Appuyez sur <b>Entrée</b> ou tapez une <b>virgule</b> après chaque ingrédient pour l'ajouter, ou choisissez dans la liste proposée.
+            <div style="font-size:11.5px;color:var(--gris-txt);margin-top:10px;">
+                Touchez un résultat proposé pour l'ajouter, ou appuyez sur <b>Entrée</b> si l'ingrédient n'apparaît pas dans la liste. Touchez un ingrédient déjà ajouté pour le retirer.
             </div>
-            <button class="btn-action" style="margin-top:12px;" onclick="verifierMenu()">🔍 Vérifier</button>
+            <button class="btn-action btn-imprimer" style="margin-top:12px;" onclick="enregistrerJourActuel()">💾 Enregistrer pour ce jour</button>
+            <button class="btn-action" style="margin-top:10px;" onclick="verifierMenu()">🔍 Vérifier</button>
         </div>
         <div class="carte" id="zoneResultatVerif" style="display:none;"></div>
     </div>
@@ -427,6 +448,12 @@
     Accès public en lecture seule — aucune donnée n'est modifiable depuis cette page.<br>
     Les noms des résidents ne sont pas affichés.
 </footer>
+
+<div id="ecranVeille" style="display:none;position:fixed;inset:0;background:var(--bleu-fonce);z-index:999;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;cursor:pointer;" onclick="reveillerApplication()">
+    <div style="font-size:50px;margin-bottom:14px;">💤</div>
+    <div style="color:white;font-size:18px;font-weight:700;margin-bottom:8px;">Toujours là ?</div>
+    <div style="color:white;font-size:13.5px;opacity:0.85;">Touchez l'écran pour continuer — rien n'a été perdu</div>
+</div>
 
 <script>
     // ===== CONFIG SUPABASE (lecture seule) =====
@@ -452,8 +479,8 @@
     function rendreEtiquettes() {
         var zone = document.getElementById("apercuIngredients");
         zone.innerHTML = _ingredientsSaisis.map(function (ing, idx) {
-            return "<span class='puce-tag'>" + escapeHtml(ing) +
-                "<button type='button' onclick='retirerIngredient(" + idx + ")' aria-label='Retirer'>✕</button></span>";
+            return "<span class='mot-choisi' onmousedown='event.preventDefault(); retirerIngredient(" + idx + ")'>" +
+                escapeHtml(ing) + "</span><span class='mot-separateur'>·</span>";
         }).join("");
     }
 
@@ -467,6 +494,76 @@
     function retirerIngredient(idx) {
         _ingredientsSaisis.splice(idx, 1);
         rendreEtiquettes();
+    }
+
+    // ===== SAUVEGARDE PAR JOUR DE LA SEMAINE (expire après 4 jours) =====
+    var _jourSelectionne = null;
+    var DELAI_EXPIRATION_JOUR_MS = 4 * 24 * 60 * 60 * 1000; // 4 jours — modifiable ici
+
+    function selectionnerJour(jour) {
+        _jourSelectionne = jour;
+        document.querySelectorAll(".jour-btn").forEach(function (b) {
+            b.classList.toggle("actif", b.dataset.jour === jour);
+        });
+        chargerIngredientsJour(jour);
+    }
+
+    async function chargerIngredientsJour(jour) {
+        var msg = document.getElementById("msgJour");
+        msg.textContent = "Chargement…";
+        try {
+            var res = await _sb.from("menus_jours").select("ingredients, updated_at")
+                .eq("etab_id", ETAB_ID).eq("jour", jour).single();
+
+            if (res.error || !res.data) {
+                msg.textContent = "Aucune liste enregistrée pour ce jour.";
+                _ingredientsSaisis = [];
+                rendreEtiquettes();
+                return;
+            }
+
+            var age = Date.now() - new Date(res.data.updated_at).getTime();
+            if (age > DELAI_EXPIRATION_JOUR_MS) {
+                msg.textContent = "La liste enregistrée a expiré (plus de 4 jours) — repartez de zéro.";
+                _ingredientsSaisis = [];
+                rendreEtiquettes();
+                _sb.from("menus_jours").delete().eq("etab_id", ETAB_ID).eq("jour", jour);
+                return;
+            }
+
+            _ingredientsSaisis = Array.isArray(res.data.ingredients) ? res.data.ingredients : [];
+            rendreEtiquettes();
+            msg.textContent = _ingredientsSaisis.length > 0
+                ? "Liste retrouvée pour ce jour (" + _ingredientsSaisis.length + " ingrédient(s))."
+                : "Aucun ingrédient enregistré pour ce jour.";
+        } catch (e) {
+            msg.textContent = "Erreur de chargement.";
+        }
+    }
+
+    async function enregistrerJourActuel() {
+        if (!_jourSelectionne) {
+            document.getElementById("msgJour").textContent = "Choisissez d'abord un jour ci-dessus.";
+            return;
+        }
+        var enCours = document.getElementById("inputIngredients").value;
+        if (enCours && enCours.trim()) {
+            ajouterIngredientDepuisTexte(enCours);
+            document.getElementById("inputIngredients").value = "";
+        }
+        var msg = document.getElementById("msgJour");
+        msg.textContent = "Enregistrement…";
+        try {
+            await _sb.from("menus_jours").upsert({
+                etab_id: ETAB_ID,
+                jour: _jourSelectionne,
+                ingredients: _ingredientsSaisis,
+                updated_at: new Date().toISOString()
+            }, { onConflict: "etab_id,jour" });
+            msg.textContent = "✅ Enregistré pour " + _jourSelectionne + ".";
+        } catch (e) {
+            msg.textContent = "Erreur lors de l'enregistrement.";
+        }
     }
 
     // Ajoute automatiquement une étiquette dès qu'une virgule est tapée
@@ -829,6 +926,37 @@
             window.open(_rappelTexturePdf, "_blank");
         }
     }
+
+    // ===== ECRAN DE VEILLE PAR INACTIVITE =====
+    // N'efface aucune donnée — recouvre simplement l'écran, tout est repris à l'identique
+    var DELAI_INACTIVITE_MS = 10 * 60 * 1000; // 10 minutes — modifiable ici
+    var _timerInactivite = null;
+
+    function demarrerMinuteurInactivite() {
+        clearTimeout(_timerInactivite);
+        _timerInactivite = setTimeout(afficherEcranVeille, DELAI_INACTIVITE_MS);
+    }
+
+    function afficherEcranVeille() {
+        document.getElementById("ecranVeille").style.display = "flex";
+    }
+
+    function reveillerApplication() {
+        document.getElementById("ecranVeille").style.display = "none";
+        demarrerMinuteurInactivite();
+    }
+
+    ["click", "touchstart", "keydown", "input", "scroll"].forEach(function (evt) {
+        document.addEventListener(evt, function () {
+            // Ne relance le minuteur que si l'écran de veille n'est pas déjà affiché
+            // (sinon un simple frôlement rallumerait l'écran sans passer par reveillerApplication)
+            if (document.getElementById("ecranVeille").style.display !== "flex") {
+                demarrerMinuteurInactivite();
+            }
+        }, { passive: true });
+    });
+
+    demarrerMinuteurInactivite();
 
     // ===== UTILITAIRES =====
     function escapeHtml(str) {
