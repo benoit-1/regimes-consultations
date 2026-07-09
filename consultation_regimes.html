@@ -639,6 +639,11 @@
                 mot.replace(/"/g, "&quot;").replace(/'/g, "\\'") + "\")'>" + escapeHtml(mot) + "</div>";
         }).join("");
         zone.style.display = "block";
+        // Défilement automatique pour garder la liste visible, utile en affichage paysage
+        // où l'écran est plus bas et la liste peut sortir du cadre visible
+        setTimeout(function () {
+            zone.scrollIntoView({ behavior: "smooth", block: "end" });
+        }, 50);
     }
 
     function selectionnerSuggestion(mot) {
