@@ -720,7 +720,17 @@
             afficherErreurGlobale("Impossible d'initialiser la connexion. Vérifiez votre connexion internet.");
             return;
         }
+        enregistrerVisite("officiel");
         await chargerDonnees();
+    }
+
+    // Enregistre discrètement la visite pour les statistiques (n'affecte jamais l'affichage)
+    function enregistrerVisite(qrType) {
+        try {
+            _sb.rpc("incrementer_visite", { p_etab_id: ETAB_ID, p_qr_type: qrType });
+        } catch (e) {
+            // Silencieux — la stat n'est jamais bloquante pour l'utilisateur
+        }
     }
 
     async function chargerDonnees() {
