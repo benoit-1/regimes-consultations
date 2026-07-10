@@ -441,18 +441,19 @@
 
     <!-- PANNEAU 3 : RAPPEL TEXTURE -->
     <div class="panneau" id="panneau-texture">
-        <div class="carte" style="text-align:center;">
+        <div class="carte" id="carteTexture" style="text-align:center;">
             <div style="font-size:50px;margin-bottom:10px;">📄</div>
             <div id="zoneTextureInfo" style="color:var(--gris-txt);font-size:13.5px;margin-bottom:16px;">Chargement…</div>
-            <button class="btn-action" id="btnOuvrirPdf" style="display:none;" onclick="ouvrirPdfTexture()">👁️ Ouvrir le document</button>
+        </div>
+        <div id="zoneAffichagePdf" style="display:none;">
+            <iframe id="framePdfTexture" style="width:100%;height:75vh;border:1.5px solid var(--gris-bord);border-radius:10px;background:white;"></iframe>
         </div>
     </div>
 
 </div>
 
 <footer>
-    Accès public en lecture seule — aucune donnée n'est modifiable depuis cette page.<br>
-    Les noms des résidents ne sont pas affichés.
+    RepasManager
 </footer>
 
 <div id="ecranVeille" style="display:none;position:fixed;inset:0;background:var(--bleu-fonce);z-index:999;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;cursor:pointer;" onclick="reveillerApplication()">
@@ -746,6 +747,20 @@
 
     // ===== ONGLETS =====
     function changerOnglet(nom) {
+        var dejaOuvert = document.getElementById("panneau-" + nom).classList.contains("actif");
+
+        if (dejaOuvert) {
+            // Second clic sur l'onglet déjà ouvert : on referme et revient à l'accueil
+            document.querySelectorAll(".onglet-btn").forEach(function (b) {
+                b.classList.remove("actif");
+            });
+            document.querySelectorAll(".panneau").forEach(function (p) {
+                p.classList.toggle("actif", p.id === "panneau-accueil");
+            });
+            appliquerPaysageSelonPanneau(false);
+            return;
+        }
+
         document.querySelectorAll(".onglet-btn").forEach(function (b) {
             b.classList.toggle("actif", b.dataset.onglet === nom);
         });
@@ -859,7 +874,7 @@
         }
 
         var presents = residentsPresents();
-        var alertesMap = {}; // clé = chambre + mot -> alerte fusionnée
+        var alertesMap = {}; // clé = chambre -> alerte fusionnée (tous les ingrédients concernés)
 
         // Vider les étiquettes maintenant que les ingrédients ont été récupérés,
         // pour permettre une nouvelle saisie directe sans avoir à effacer
@@ -893,10 +908,11 @@
                 }
                 if (sources.length === 0) return;
 
-                var cle = chambre + "|||" + ing.toLowerCase();
+                var cle = chambre;
                 if (!alertesMap[cle]) {
-                    alertesMap[cle] = { chambre: chambre, unite: unite, mot: ing, texture: texteTexture, sources: [] };
+                    alertesMap[cle] = { chambre: chambre, unite: unite, texture: texteTexture, mots: [], sources: [] };
                 }
+                if (alertesMap[cle].mots.indexOf(ing) === -1) alertesMap[cle].mots.push(ing);
                 sources.forEach(function (s) {
                     if (alertesMap[cle].sources.indexOf(s) === -1) alertesMap[cle].sources.push(s);
                 });
@@ -905,19 +921,30 @@
 
         var alertes = Object.keys(alertesMap).map(function (k) { return alertesMap[k]; });
 
+        // Tri par ordre de préparation : Mixé, puis Haché, puis autres textures spéciales, puis Normal en dernier
+        function prioriteTexture(texture) {
+            var t = (texture || "").toLowerCase();
+            if (t.indexOf("mixé") !== -1) return 0;
+            if (t.indexOf("haché") !== -1) return 1;
+            if (t === "normal") return 3;
+            return 2;
+        }
+        alertes.sort(function (a, b) { return prioriteTexture(a.texture) - prioriteTexture(b.texture); });
+
         if (alertes.length === 0) {
             zone.innerHTML = "<div class='ok-item'>✅ Aucune incompatibilité détectée avec les régimes et aversions des résidents présents.</div>";
             return;
         }
 
         var html = "<button class='btn-action btn-imprimer' onclick='window.print()' style='margin-bottom:12px;'>🖨️ Imprimer</button>" +
-            "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " alerte(s) détectée(s)</div>";
+            "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " chambre(s) concernée(s)</div>";
         alertes.forEach(function (a) {
+            var badgesMots = a.mots.map(function (m) { return "<span class='alerte-mot'>" + escapeHtml(m) + "</span>"; }).join(" ");
             html += "<div class='alerte-item'>" +
                 "<div class='alerte-ligne1'>" +
                 "<b>Ch. " + escapeHtml(a.chambre) + "</b>" +
                 (a.unite ? "<span class='alerte-unite'>— " + escapeHtml(a.unite) + "</span>" : "") +
-                "<span class='alerte-mot'>" + escapeHtml(a.mot) + "</span>" +
+                badgesMots +
                 "</div>" +
                 (a.texture !== "Normal" ? "<div class='alerte-texture-badge'>" + escapeHtml(a.texture) + "</div>" : "") +
                 "<div class='alerte-detail'>Texture : " + escapeHtml(a.texture) +
@@ -930,33 +957,32 @@
     // ===== PANNEAU 3 : RAPPEL TEXTURE =====
     function afficherRappelTextureInfo() {
         var info = document.getElementById("zoneTextureInfo");
-        var btn = document.getElementById("btnOuvrirPdf");
+        var carteInfo = document.getElementById("carteTexture");
+        var zonePdf = document.getElementById("zoneAffichagePdf");
         if (_rappelTexturePdf) {
-            info.textContent = "Document de rappel des textures alimentaires disponible.";
-            btn.style.display = "block";
+            carteInfo.style.display = "none";
+            zonePdf.style.display = "block";
+            try {
+                var parts = _rappelTexturePdf.split(",");
+                var byteString = atob(parts[1]);
+                var mimeMatch = parts[0].match(/data:(.*?);base64/);
+                var mimeType = mimeMatch ? mimeMatch[1] : "application/pdf";
+                var ab = new ArrayBuffer(byteString.length);
+                var ia = new Uint8Array(ab);
+                for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                var blob = new Blob([ab], { type: mimeType });
+                var url = URL.createObjectURL(blob);
+                document.getElementById("framePdfTexture").src = url;
+            } catch (e) {
+                document.getElementById("framePdfTexture").src = _rappelTexturePdf;
+            }
         } else {
+            carteInfo.style.display = "block";
+            zonePdf.style.display = "none";
             info.textContent = "Aucun document de rappel texture n'a été mis en ligne pour le moment.";
-            btn.style.display = "none";
         }
     }
 
-    function ouvrirPdfTexture() {
-        if (!_rappelTexturePdf) return;
-        try {
-            var parts = _rappelTexturePdf.split(",");
-            var byteString = atob(parts[1]);
-            var mimeMatch = parts[0].match(/data:(.*?);base64/);
-            var mimeType = mimeMatch ? mimeMatch[1] : "application/pdf";
-            var ab = new ArrayBuffer(byteString.length);
-            var ia = new Uint8Array(ab);
-            for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-            var blob = new Blob([ab], { type: mimeType });
-            var url = URL.createObjectURL(blob);
-            window.open(url, "_blank");
-        } catch (e) {
-            window.open(_rappelTexturePdf, "_blank");
-        }
-    }
 
     // ===== ECRAN DE VEILLE PAR INACTIVITE =====
     // N'efface aucune donnée — recouvre simplement l'écran, tout est repris à l'identique
