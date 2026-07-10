@@ -746,7 +746,6 @@
             }
 
             afficherFeuilleRegimes();
-            afficherRappelTextureInfo();
         } catch (e) {
             afficherErreurGlobale("Erreur inattendue lors du chargement des données.");
             console.log(e);
@@ -785,6 +784,10 @@
         // Paysage forcé uniquement sur l'écran de résultats (Feuille Régimes) ;
         // les écrans de saisie restent en affichage normal
         appliquerPaysageSelonPanneau(nom === "regimes");
+
+        if (nom === "texture") {
+            afficherRappelTextureInfo();
+        }
     }
 
     function appliquerPaysageSelonPanneau(actif) {
@@ -970,6 +973,8 @@
     }
 
     // ===== PANNEAU 3 : RAPPEL TEXTURE =====
+    var _pdfDejaRendu = false;
+
     function afficherRappelTextureInfo() {
         var info = document.getElementById("zoneTextureInfo");
         var carteInfo = document.getElementById("carteTexture");
@@ -979,8 +984,11 @@
         if (_rappelTexturePdf) {
             carteInfo.style.display = "none";
             zonePdf.style.display = "block";
-            conteneur.innerHTML = "<div class='msg-chargement-pdf'>Chargement du document…</div>";
-            rendrePdfEnPages(_rappelTexturePdf, conteneur);
+            if (!_pdfDejaRendu) {
+                conteneur.innerHTML = "<div class='msg-chargement-pdf'>Chargement du document…</div>";
+                rendrePdfEnPages(_rappelTexturePdf, conteneur);
+                _pdfDejaRendu = true;
+            }
         } else {
             carteInfo.style.display = "block";
             zonePdf.style.display = "none";
@@ -1005,12 +1013,13 @@
             var pdf = await window.pdfjsLib.getDocument({ data: ab }).promise;
             conteneur.innerHTML = "";
 
-            var largeurCible = conteneur.clientWidth || 700;
+            // Le conteneur est maintenant visible (onglet ouvert), la largeur mesurée est donc fiable
+            var largeurCible = conteneur.clientWidth || document.querySelector(".conteneur").clientWidth || 700;
 
             for (var num = 1; num <= pdf.numPages; num++) {
                 var page = await pdf.getPage(num);
                 var viewportBase = page.getViewport({ scale: 1 });
-                // Échelle x3 pour une bonne netteté, puis affichage limité à la largeur du conteneur via CSS
+                // Échelle x2 pour une bonne netteté, puis affichage limité à la largeur du conteneur
                 var echelle = (largeurCible / viewportBase.width) * 2;
                 var viewport = page.getViewport({ scale: echelle });
 
@@ -1018,6 +1027,11 @@
                 canvas.className = "page-pdf";
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
+                // Forçage direct en JS de la taille d'affichage, indépendamment du CSS externe
+                canvas.style.width = "100%";
+                canvas.style.height = "auto";
+                canvas.style.display = "block";
+                canvas.style.maxWidth = "none";
                 var ctx = canvas.getContext("2d");
                 await page.render({ canvasContext: ctx, viewport: viewport }).promise;
                 conteneur.appendChild(canvas);
