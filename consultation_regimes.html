@@ -312,16 +312,17 @@
     @media print {
         header .onglets, .onglets, footer,
         #panneau-verifier .carte:first-child,
-        #btnOuvrirPdf, .btn-imprimer {
+        #btnOuvrirPdf, .btn-imprimer, #panneau-verif-resultats > .btn-action:first-child {
             display: none !important;
         }
         body { background: white; }
         .carte { border: none; padding: 0; }
     }
-    /* Force l'affichage en paysage sur téléphone (plus large que haut),
-       même si le téléphone est tenu à la verticale */
+    /* Force l'affichage en paysage sur téléphone (plus large que haut) —
+       uniquement sur les écrans de résultats (classe activée par JS),
+       jamais sur les écrans de saisie */
     @media screen and (max-width: 820px) and (orientation: portrait) {
-        html {
+        html.paysage-actif {
             transform: rotate(-90deg);
             transform-origin: top left;
             width: 100vh;
@@ -331,7 +332,7 @@
             top: 100%;
             left: 0;
         }
-        body {
+        html.paysage-actif body {
             width: 100vh;
             min-height: 100vw;
         }
@@ -430,7 +431,12 @@
             <button class="btn-action btn-imprimer" style="margin-top:12px;" onclick="enregistrerJourActuel()">💾 Enregistrer pour ce jour</button>
             <button class="btn-action" style="margin-top:10px;" onclick="verifierMenu()">🔍 Vérifier</button>
         </div>
-        <div class="carte" id="zoneResultatVerif" style="display:none;"></div>
+    </div>
+
+    <!-- PANNEAU 2b : RESULTATS DE VERIFICATION (paysage forcé) -->
+    <div class="panneau" id="panneau-verif-resultats">
+        <button class="btn-action" style="margin-bottom:10px;" onclick="retourSaisieVerif()">← Nouvelle recherche</button>
+        <div class="carte" id="zoneResultatVerif"></div>
     </div>
 
     <!-- PANNEAU 3 : RAPPEL TEXTURE -->
@@ -746,6 +752,20 @@
         document.querySelectorAll(".panneau").forEach(function (p) {
             p.classList.toggle("actif", p.id === "panneau-" + nom);
         });
+        // Paysage forcé uniquement sur l'écran de résultats (Feuille Régimes) ;
+        // les écrans de saisie restent en affichage normal
+        appliquerPaysageSelonPanneau(nom === "regimes");
+    }
+
+    function appliquerPaysageSelonPanneau(actif) {
+        document.documentElement.classList.toggle("paysage-actif", actif);
+    }
+
+    function retourSaisieVerif() {
+        appliquerPaysageSelonPanneau(false);
+        document.querySelectorAll(".panneau").forEach(function (p) {
+            p.classList.toggle("actif", p.id === "panneau-verifier");
+        });
     }
 
     // ===== PANNEAU 1 : FEUILLE REGIMES =====
@@ -823,6 +843,12 @@
             document.getElementById("inputIngredients").value = "";
         }
         var ingredients = _ingredientsSaisis.slice();
+
+        // Bascule vers l'écran de résultats dédié, en paysage
+        document.querySelectorAll(".panneau").forEach(function (p) {
+            p.classList.toggle("actif", p.id === "panneau-verif-resultats");
+        });
+        appliquerPaysageSelonPanneau(true);
 
         var zone = document.getElementById("zoneResultatVerif");
         zone.style.display = "block";
