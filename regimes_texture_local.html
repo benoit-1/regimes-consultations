@@ -224,7 +224,7 @@
                 <option>Mixé</option>
                 <option>Petit Mixé</option>
             </select>
-            <label class="form-label">Régime médical (séparez par des virgules)</label>
+            <label class="form-label">Régime (séparez par des virgules)</label>
             <input type="text" id="champRegime" placeholder="Ex : SANS SEL, SANS SUCRE">
             <label class="form-label">Aversions (séparez par des virgules)</label>
             <input type="text" id="champAversion" placeholder="Ex : POISSON, TOMATE">
@@ -302,6 +302,7 @@
             <input type="file" id="inputPdfTexture" accept=".pdf" onchange="chargerPdfTexture(event)">
             <button class="btn-action btn-supprimer" style="margin-top:14px;" onclick="supprimerPdfTexture()">🗑️ Supprimer le document</button>
         </div>
+        <button class="btn-action btn-imprimer" id="boutonGererTexture" style="display:none;margin-bottom:10px;" onclick="basculerGestionTexture()">⚙️ Gérer le document</button>
         <div id="zoneAffichagePdf" style="display:none;">
             <embed id="embedPdfTexture" type="application/pdf" style="width:100%;height:75vh;border:1.5px solid var(--gris-bord);border-radius:10px;">
         </div>
@@ -506,11 +507,13 @@
 
     function afficherFeuilleRegimes() {
         var presents = residentsPresents();
-        var avecRegime = presents.filter(function (r) { return r.regime && r.regime.trim() !== ""; });
+        var avecRegime = presents.filter(function (r) {
+            return (r.regime && r.regime.trim() !== "") || (r.aversion && r.aversion.trim() !== "");
+        });
         var zone = document.getElementById("zoneRegimes");
 
         if (avecRegime.length === 0) {
-            zone.innerHTML = "<div class='msg-vide'>Aucun résident présent avec un régime médical spécifique actuellement.</div>";
+            zone.innerHTML = "<div class='msg-vide'>Aucun résident présent avec un régime ou une aversion spécifique actuellement.</div>";
             return;
         }
 
@@ -525,14 +528,15 @@
             var liste = avecRegime.filter(function (r) { return (r.unite || "Non précisé") === unite; });
             liste.sort(function (a, b) { return (a.chambre || "").localeCompare((b.chambre || ""), "fr", { numeric: true }); });
             html += "<div class='section-titre'>🏢 " + escapeHtml(unite) + "</div>";
-            html += "<table><thead><tr><th>Chambre</th><th>Texture</th><th>Régime</th></tr></thead><tbody>";
+            html += "<table><thead><tr><th>Chambre</th><th>Texture</th><th>Régime</th><th>Aversions</th></tr></thead><tbody>";
             liste.forEach(function (r) {
                 var texMidi = r.textureMidi || "Normal", texSoir = r.textureSoir || "Normal";
                 var texte = texMidi === texSoir ? texMidi : ("Midi: " + texMidi + " / Soir: " + texSoir);
                 var couleur = (texMidi !== "Normal" || texSoir !== "Normal") ? "color:var(--bleu-fonce);font-weight:700;" : "";
                 html += "<tr><td><b>Ch. " + escapeHtml(r.chambre) + "</b></td>" +
                     "<td style='" + couleur + "'>" + escapeHtml(texte) + "</td>" +
-                    "<td><b>" + escapeHtml(r.regime) + "</b></td></tr>";
+                    "<td><b>" + escapeHtml(r.regime || "—") + "</b></td>" +
+                    "<td>" + escapeHtml(r.aversion || "—") + "</td></tr>";
             });
             html += "</tbody></table>";
         });
@@ -761,15 +765,26 @@
     }
     function afficherRappelTextureInfo() {
         var pdf = localStorage.getItem(CLE_PDF);
+        var carteInfo = document.getElementById("carteTexture");
         var zonePdf = document.getElementById("zoneAffichagePdf");
+        var boutonGerer = document.getElementById("boutonGererTexture");
         if (pdf) {
             document.getElementById("zoneTextureInfo").textContent = "Document chargé.";
             document.getElementById("embedPdfTexture").src = pdf;
             zonePdf.style.display = "block";
+            carteInfo.style.display = "none";
+            boutonGerer.style.display = "block";
         } else {
             document.getElementById("zoneTextureInfo").textContent = "Aucun document chargé.";
             zonePdf.style.display = "none";
+            carteInfo.style.display = "block";
+            boutonGerer.style.display = "none";
         }
+    }
+
+    function basculerGestionTexture() {
+        var carteInfo = document.getElementById("carteTexture");
+        carteInfo.style.display = (carteInfo.style.display === "none") ? "block" : "none";
     }
 
     // ===== ECRAN DE VEILLE =====
