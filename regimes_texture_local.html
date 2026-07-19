@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Régimes & Texture</title>
+<style>
+    :root {
+        --bleu: #0288d1;
+        --bleu-clair: #e3f2fd;
+        --bleu-fonce: #1565c0;
+        --vert: #00796b;
+        --vert-clair: #e0f2f1;
+        --rouge: #c62828;
+        --rouge-clair: #ffebee;
+        --gris-fond: #f0f7ff;
+        --gris-bord: #bbdefb;
+        --gris-txt: #546e7a;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        background: var(--gris-fond);
+        color: #263238;
+        padding-bottom: 40px;
+    }
+    header {
+        background: var(--bleu-fonce);
+        color: white;
+        padding: 8px 16px;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    header h1 { margin: 0; font-size: 16px; }
+    header .sous-titre { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+    .conteneur { max-width: 720px; margin: 0 auto; padding: 16px; }
+    .onglets { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+    .onglet-btn {
+        flex: 1; min-width: 76px;
+        background: white; border: 1.5px solid var(--gris-bord); border-radius: 10px;
+        padding: 10px 6px; font-size: 12px; font-weight: 700; color: var(--gris-txt); cursor: pointer;
+        text-align: center;
+    }
+    .onglet-btn.actif { background: var(--bleu-fonce); border-color: var(--bleu-fonce); color: white; }
+    .panneau { display: none; }
+    .panneau.actif { display: block; }
+    .carte {
+        background: white; border-radius: 12px; border: 1.5px solid var(--gris-bord);
+        padding: 16px; margin-bottom: 16px;
+    }
+    .section-titre {
+        font-weight: 800; color: var(--bleu-fonce); font-size: 15px;
+        margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--bleu-clair);
+    }
+    .section-titre:first-child { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 4px; }
+    th, td { padding: 9px 8px; text-align: left; border-bottom: 1px solid var(--gris-bord); }
+    th { background: var(--bleu-clair); color: var(--bleu-fonce); font-weight: 700; font-size: 12.5px; }
+    tr:last-child td { border-bottom: none; }
+    .msg-vide { text-align: center; color: var(--gris-txt); font-style: italic; padding: 24px 10px; font-size: 14px; }
+    .btn-action {
+        display: block; width: 100%; background: var(--bleu); color: white; border: none;
+        border-radius: 10px; padding: 15px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 10px;
+    }
+    .btn-action:active { filter: brightness(0.92); }
+    .btn-imprimer { background: white; color: var(--bleu-fonce); border: 1.5px solid var(--gris-bord); }
+    .btn-supprimer { background: var(--rouge); }
+    textarea, input[type=text], input[type=number], select {
+        width: 100%; border: 1.5px solid var(--gris-bord); border-radius: 8px; padding: 11px;
+        font-size: 14.5px; font-family: inherit; background: white;
+    }
+    label.form-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--gris-txt); margin-bottom: 5px; margin-top: 12px; }
+    label.form-label:first-child { margin-top: 0; }
+    .alerte-item {
+        background: var(--rouge-clair); border: 1.5px solid #ef9a9a; border-radius: 8px;
+        padding: 12px 14px; margin-bottom: 10px; font-size: 13.5px;
+    }
+    .alerte-item b { color: var(--rouge); font-size: 15px; }
+    .alerte-ligne1 { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .alerte-unite { color: var(--gris-txt); font-size: 12.5px; }
+    .alerte-texture-badge {
+        display: inline-block; background: var(--bleu-fonce); color: white; border-radius: 5px;
+        padding: 1px 7px; font-size: 11px; font-weight: 700; margin-top: 4px;
+    }
+    .alerte-detail { margin-top: 6px; font-size: 11.5px; color: var(--gris-txt); }
+    .alerte-mot {
+        display: inline-block; background: var(--rouge); color: white; border-radius: 6px;
+        padding: 2px 10px; font-size: 13px; font-weight: 700;
+    }
+    .ok-item {
+        background: var(--vert-clair); border: 1.5px solid #80cbc4; border-radius: 8px;
+        padding: 14px; text-align: center; color: var(--vert); font-weight: 700; font-size: 14px;
+    }
+    .ligne-saisie {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-bottom: 10px;
+        border-bottom: 2px solid var(--bleu); cursor: text; min-height: 28px;
+    }
+    #inputIngredients { border: none; outline: none; flex: 1; min-width: 100px; font-size: 15px; background: transparent; padding: 0; }
+    .mot-choisi { color: var(--bleu-fonce); font-size: 15px; font-weight: 700; cursor: pointer; }
+    .mot-separateur { color: var(--gris-txt); font-size: 15px; }
+    .liste-suggestions { margin-top: 2px; }
+    .suggestion-item {
+        padding: 12px 4px; font-size: 14.5px; cursor: pointer;
+        border-bottom: 1px solid var(--gris-fond); color: #263238;
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover, .suggestion-item:active { background: var(--bleu-clair); }
+    .jours-semaine { display: flex; gap: 6px; flex-wrap: wrap; }
+    .jour-btn {
+        flex: 1; min-width: 40px; background: white; border: 1.5px solid var(--gris-bord); border-radius: 8px;
+        padding: 10px 4px; font-size: 12.5px; font-weight: 700; color: var(--gris-txt); cursor: pointer;
+    }
+    .jour-btn.actif { background: var(--bleu-fonce); border-color: var(--bleu-fonce); color: white; }
+    .ligne-residents { border-bottom: 1px solid var(--gris-fond); padding: 12px 0; }
+    .ligne-residents:last-child { border-bottom: none; }
+    .ligne-residents-entete {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+    }
+    .ligne-residents-titre { font-weight: 700; font-size: 14px; color: var(--bleu-fonce); }
+    .ligne-residents-detail { font-size: 12.5px; color: var(--gris-txt); }
+    .btn-mini {
+        background: var(--bleu-clair); color: var(--bleu-fonce); border: none; border-radius: 6px;
+        padding: 5px 10px; font-size: 12px; font-weight: 700; cursor: pointer; margin-left: 6px;
+    }
+    .btn-mini-suppr { background: var(--rouge-clair); color: var(--rouge); }
+    @media print {
+        header .onglets, .onglets, footer, #panneau-verif-resultats > .btn-action:first-child,
+        .btn-imprimer, #panneau-residents { display: none !important; }
+        body { background: white; }
+        .carte { border: none; padding: 0; }
+    }
+    @media screen and (max-width: 820px) and (orientation: portrait) {
+        html.paysage-actif {
+            transform: rotate(-90deg); transform-origin: top left;
+            width: 100vh; height: 100vw; overflow-x: hidden; position: absolute; top: 100%; left: 0;
+        }
+        html.paysage-actif body { width: 100vh; min-height: 100vw; }
+    }
+    footer { text-align: center; font-size: 11px; color: var(--gris-txt); margin-top: 24px; padding: 0 20px; }
+    #ecranVeille {
+        display: none; position: fixed; inset: 0; background: var(--bleu-fonce); z-index: 999;
+        flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        padding: 20px; cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>🍽️ Régimes & Texture</h1>
+    <div class="sous-titre">Consultation régimes et texture</div>
+</header>
+
+<div class="conteneur">
+
+    <div class="onglets">
+        <button class="onglet-btn" data-onglet="residents" onclick="changerOnglet('residents')">👥 Résidents</button>
+        <button class="onglet-btn" data-onglet="regimes" onclick="changerOnglet('regimes')">📋 Feuille Régimes</button>
+        <button class="onglet-btn" data-onglet="verifier" onclick="changerOnglet('verifier')">🔍 Vérifier un menu</button>
+        <button class="onglet-btn" data-onglet="texture" onclick="changerOnglet('texture')">📄 Rappel Texture</button>
+    </div>
+
+    <!-- ECRAN D'ACCUEIL -->
+    <div class="panneau actif" id="panneau-accueil">
+        <div class="carte" style="text-align:center;padding:36px 20px;">
+            <div style="font-size:40px;margin-bottom:10px;">👆</div>
+            <div style="font-size:14px;color:var(--gris-txt);">Choisissez une option ci-dessus pour commencer.</div>
+        </div>
+    </div>
+
+    <!-- PANNEAU RESIDENTS -->
+    <div class="panneau" id="panneau-residents">
+        <div class="carte">
+            <div class="section-titre" style="margin-top:0;">➕ Ajouter / Modifier un résident</div>
+            <input type="hidden" id="residentId">
+            <label class="form-label">Étage / Unité</label>
+            <input type="text" id="champUnite" placeholder="Ex : Étage 1">
+            <label class="form-label">Chambre</label>
+            <input type="text" id="champChambre" placeholder="Ex : 118">
+            <label class="form-label">Présence</label>
+            <select id="champStatut">
+                <option value="Présent">Présent</option>
+                <option value="Absent">Absent</option>
+            </select>
+            <label class="form-label">Texture midi</label>
+            <select id="champTextureMidi">
+                <option>Normal</option>
+                <option>Haché</option>
+                <option>Mixé</option>
+                <option>Petit Mixé</option>
+            </select>
+            <label class="form-label">Texture soir</label>
+            <select id="champTextureSoir">
+                <option>Normal</option>
+                <option>Haché</option>
+                <option>Mixé</option>
+                <option>Petit Mixé</option>
+            </select>
+            <label class="form-label">Régime médical (séparez par des virgules)</label>
+            <input type="text" id="champRegime" placeholder="Ex : SANS SEL, SANS SUCRE">
+            <label class="form-label">Aversions (séparez par des virgules)</label>
+            <input type="text" id="champAversion" placeholder="Ex : POISSON, TOMATE">
+            <button class="btn-action" style="margin-top:16px;" onclick="enregistrerResident()">💾 Enregistrer ce résident</button>
+            <button class="btn-action btn-imprimer" onclick="viderFormulaireResident()">➕ Nouveau résident (vider le formulaire)</button>
+        </div>
+
+        <div class="carte">
+            <div class="section-titre" style="margin-top:0;">🔄 Transférer entre appareils</div>
+            <div style="font-size:12.5px;color:var(--gris-txt);margin-bottom:12px;">
+                Saisissez la liste sur un ordinateur, exportez-la, transférez le fichier (AirDrop, mail…), puis importez-le ici.
+            </div>
+            <button class="btn-action btn-imprimer" onclick="exporterResidents()">📤 Exporter la liste des résidents</button>
+            <label class="form-label" style="margin-top:10px;">Importer un fichier</label>
+            <input type="file" id="inputImportResidents" accept=".json" onchange="importerResidents(event)">
+        </div>
+
+        <div class="carte">
+            <div class="section-titre" style="margin-top:0;">📋 Résidents enregistrés</div>
+            <div id="listeResidents"></div>
+        </div>
+    </div>
+
+    <!-- PANNEAU FEUILLE REGIMES -->
+    <div class="panneau" id="panneau-regimes">
+        <button class="btn-action btn-imprimer" onclick="window.print()" style="margin-bottom:10px;">🖨️ Imprimer</button>
+        <div class="carte" id="zoneRegimes"></div>
+    </div>
+
+    <!-- PANNEAU VERIFIER UN MENU -->
+    <div class="panneau" id="panneau-verifier">
+        <div class="carte">
+            <label class="form-label">Jour du menu</label>
+            <div class="jours-semaine">
+                <button class="jour-btn" data-jour="lundi" onclick="selectionnerJour('lundi')">Lun</button>
+                <button class="jour-btn" data-jour="mardi" onclick="selectionnerJour('mardi')">Mar</button>
+                <button class="jour-btn" data-jour="mercredi" onclick="selectionnerJour('mercredi')">Mer</button>
+                <button class="jour-btn" data-jour="jeudi" onclick="selectionnerJour('jeudi')">Jeu</button>
+                <button class="jour-btn" data-jour="vendredi" onclick="selectionnerJour('vendredi')">Ven</button>
+                <button class="jour-btn" data-jour="samedi" onclick="selectionnerJour('samedi')">Sam</button>
+                <button class="jour-btn" data-jour="dimanche" onclick="selectionnerJour('dimanche')">Dim</button>
+            </div>
+            <div id="msgJour" style="font-size:11.5px;color:var(--gris-txt);margin:8px 0 4px;min-height:14px;"></div>
+
+            <label class="form-label" style="margin-top:10px;">Tapez un ingrédient</label>
+            <div id="zoneSaisieIngredients" class="ligne-saisie" onclick="document.getElementById('inputIngredients').focus()">
+                <span id="apercuIngredients"></span>
+                <input type="text" id="inputIngredients" placeholder="Tapez ici…"
+                    autocomplete="off"
+                    oninput="gererSaisieVirgule(); afficherSuggestions();"
+                    onkeydown="gererToucheIngredient(event)"
+                    onblur="masquerSuggestionsDifferees()">
+            </div>
+            <div id="listeSuggestions" class="liste-suggestions" style="display:none;"></div>
+            <div style="font-size:11.5px;color:var(--gris-txt);margin-top:10px;">
+                Touchez un résultat proposé, ou appuyez sur <b>Entrée</b> si l'ingrédient n'apparaît pas dans la liste. Touchez un ingrédient déjà ajouté pour le retirer.
+            </div>
+            <button class="btn-action btn-imprimer" style="margin-top:12px;" onclick="enregistrerJourActuel()">💾 Enregistrer pour ce jour</button>
+            <button class="btn-action" style="margin-top:10px;" onclick="verifierMenu()">🔍 Vérifier</button>
+        </div>
+    </div>
+
+    <!-- PANNEAU RESULTATS VERIF (paysage) -->
+    <div class="panneau" id="panneau-verif-resultats">
+        <button class="btn-action" style="margin-bottom:10px;" onclick="retourSaisieVerif()">← Nouvelle recherche</button>
+        <div class="carte" id="zoneResultatVerif"></div>
+    </div>
+
+    <!-- PANNEAU RAPPEL TEXTURE -->
+    <div class="panneau" id="panneau-texture">
+        <div class="carte" id="carteTexture" style="text-align:center;">
+            <div style="font-size:40px;margin-bottom:10px;">📄</div>
+            <div id="zoneTextureInfo" style="color:var(--gris-txt);font-size:13.5px;margin-bottom:16px;">Aucun document chargé.</div>
+            <label class="form-label" style="text-align:left;">Charger un document PDF</label>
+            <input type="file" id="inputPdfTexture" accept=".pdf" onchange="chargerPdfTexture(event)">
+            <button class="btn-action btn-supprimer" style="margin-top:14px;" onclick="supprimerPdfTexture()">🗑️ Supprimer le document</button>
+        </div>
+        <div id="zoneAffichagePdf" style="display:none;">
+            <embed id="embedPdfTexture" type="application/pdf" style="width:100%;height:75vh;border:1.5px solid var(--gris-bord);border-radius:10px;">
+        </div>
+    </div>
+
+</div>
+
+<footer>RepasManager</footer>
+
+<div id="ecranVeille" onclick="reveillerApplication()">
+    <div style="font-size:50px;margin-bottom:14px;">💤</div>
+    <div style="color:white;font-size:18px;font-weight:700;margin-bottom:8px;">Toujours là ?</div>
+    <div style="color:white;font-size:13.5px;opacity:0.85;">Touchez l'écran pour continuer — rien n'a été perdu</div>
+</div>
+
+<script>
+    // ===== STOCKAGE LOCAL (aucune donnée envoyée en ligne) =====
+    var CLE_RESIDENTS = "local_residents";
+    var CLE_PDF = "local_rappel_texture_pdf";
+    var CLE_MENUS_JOURS = "local_menus_jours";
+
+    function chargerResidents() {
+        try { return JSON.parse(localStorage.getItem(CLE_RESIDENTS)) || []; }
+        catch (e) { return []; }
+    }
+    function sauvegarderResidents(liste) {
+        localStorage.setItem(CLE_RESIDENTS, JSON.stringify(liste));
+    }
+
+    var _residents = chargerResidents();
+    var _residentEnEdition = null;
+
+    // ===== ONGLETS =====
+    function changerOnglet(nom) {
+        var dejaOuvert = document.getElementById("panneau-" + nom).classList.contains("actif");
+        if (dejaOuvert) {
+            document.querySelectorAll(".onglet-btn").forEach(function (b) { b.classList.remove("actif"); });
+            document.querySelectorAll(".panneau").forEach(function (p) { p.classList.toggle("actif", p.id === "panneau-accueil"); });
+            appliquerPaysageSelonPanneau(false);
+            return;
+        }
+        document.querySelectorAll(".onglet-btn").forEach(function (b) { b.classList.toggle("actif", b.dataset.onglet === nom); });
+        document.querySelectorAll(".panneau").forEach(function (p) { p.classList.toggle("actif", p.id === "panneau-" + nom); });
+        appliquerPaysageSelonPanneau(nom === "regimes");
+
+        if (nom === "residents") afficherListeResidents();
+        if (nom === "regimes") afficherFeuilleRegimes();
+        if (nom === "texture") afficherRappelTextureInfo();
+    }
+    function appliquerPaysageSelonPanneau(actif) {
+        document.documentElement.classList.toggle("paysage-actif", actif);
+    }
+    function retourSaisieVerif() {
+        appliquerPaysageSelonPanneau(false);
+        document.querySelectorAll(".panneau").forEach(function (p) { p.classList.toggle("actif", p.id === "panneau-verifier"); });
+    }
+
+    // ===== GESTION DES RESIDENTS =====
+    function enregistrerResident() {
+        var unite = document.getElementById("champUnite").value.trim();
+        var chambre = document.getElementById("champChambre").value.trim();
+        if (!chambre) { alert("Merci d'indiquer au moins le numéro de chambre."); return; }
+
+        var resident = {
+            id: _residentEnEdition || ("r_" + Date.now()),
+            unite: unite,
+            chambre: chambre,
+            statut: document.getElementById("champStatut").value,
+            textureMidi: document.getElementById("champTextureMidi").value,
+            textureSoir: document.getElementById("champTextureSoir").value,
+            regime: document.getElementById("champRegime").value.trim(),
+            aversion: document.getElementById("champAversion").value.trim()
+        };
+
+        if (_residentEnEdition) {
+            var idx = _residents.findIndex(function (r) { return r.id === _residentEnEdition; });
+            if (idx !== -1) _residents[idx] = resident;
+        } else {
+            _residents.push(resident);
+        }
+        sauvegarderResidents(_residents);
+        viderFormulaireResident();
+        afficherListeResidents();
+    }
+
+    function viderFormulaireResident() {
+        _residentEnEdition = null;
+        document.getElementById("residentId").value = "";
+        document.getElementById("champUnite").value = "";
+        document.getElementById("champChambre").value = "";
+        document.getElementById("champStatut").value = "Présent";
+        document.getElementById("champTextureMidi").value = "Normal";
+        document.getElementById("champTextureSoir").value = "Normal";
+        document.getElementById("champRegime").value = "";
+        document.getElementById("champAversion").value = "";
+    }
+
+    function modifierResident(id) {
+        var r = _residents.find(function (x) { return x.id === id; });
+        if (!r) return;
+        _residentEnEdition = id;
+        document.getElementById("champUnite").value = r.unite || "";
+        document.getElementById("champChambre").value = r.chambre || "";
+        document.getElementById("champStatut").value = r.statut || "Présent";
+        document.getElementById("champTextureMidi").value = r.textureMidi || "Normal";
+        document.getElementById("champTextureSoir").value = r.textureSoir || "Normal";
+        document.getElementById("champRegime").value = r.regime || "";
+        document.getElementById("champAversion").value = r.aversion || "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function supprimerResident(id) {
+        if (!confirm("Supprimer définitivement ce résident ?")) return;
+        _residents = _residents.filter(function (r) { return r.id !== id; });
+        sauvegarderResidents(_residents);
+        afficherListeResidents();
+    }
+
+    // ===== TRANSFERT ENTRE APPAREILS (export / import) =====
+    function exporterResidents() {
+        if (_residents.length === 0) {
+            alert("Aucun résident à exporter pour le moment.");
+            return;
+        }
+        var contenu = JSON.stringify(_residents, null, 2);
+        var blob = new Blob([contenu], { type: "application/json" });
+        var url = URL.createObjectURL(blob);
+        var lienTelechargement = document.createElement("a");
+        var horodatage = new Date().toISOString().slice(0, 10);
+        lienTelechargement.href = url;
+        lienTelechargement.download = "residents_" + horodatage + ".json";
+        document.body.appendChild(lienTelechargement);
+        lienTelechargement.click();
+        document.body.removeChild(lienTelechargement);
+        URL.revokeObjectURL(url);
+    }
+
+    function importerResidents(event) {
+        var fichier = event.target.files[0];
+        if (!fichier) return;
+        var lecteur = new FileReader();
+        lecteur.onload = function (e) {
+            try {
+                var donnees = JSON.parse(e.target.result);
+                if (!Array.isArray(donnees)) throw new Error("Format invalide");
+
+                var nbActuel = _residents.length;
+                var confirmation = confirm(
+                    "Importer " + donnees.length + " résident(s) ?\n\n" +
+                    (nbActuel > 0
+                        ? "⚠️ Cela remplacera les " + nbActuel + " résident(s) déjà enregistré(s) sur cet appareil."
+                        : "Aucun résident n'est actuellement enregistré ici.")
+                );
+                if (!confirmation) {
+                    event.target.value = "";
+                    return;
+                }
+
+                _residents = donnees;
+                sauvegarderResidents(_residents);
+                afficherListeResidents();
+                event.target.value = "";
+                alert("✅ " + donnees.length + " résident(s) importé(s) avec succès.");
+            } catch (erreur) {
+                alert("Impossible de lire ce fichier. Vérifiez qu'il s'agit bien d'un export généré par cette application.");
+                event.target.value = "";
+            }
+        };
+        lecteur.readAsText(fichier);
+    }
+
+    function afficherListeResidents() {
+        var zone = document.getElementById("listeResidents");
+        if (_residents.length === 0) {
+            zone.innerHTML = "<div class='msg-vide'>Aucun résident enregistré pour le moment.</div>";
+            return;
+        }
+        var tries = _residents.slice().sort(function (a, b) {
+            return (a.chambre || "").localeCompare((b.chambre || ""), "fr", { numeric: true });
+        });
+        zone.innerHTML = tries.map(function (r) {
+            return "<div class='ligne-residents'>" +
+                "<div class='ligne-residents-entete'>" +
+                "<span class='ligne-residents-titre'>Ch. " + escapeHtml(r.chambre) + (r.unite ? " — " + escapeHtml(r.unite) : "") + "</span>" +
+                "<span>" +
+                "<button class='btn-mini' onclick='modifierResident(\"" + r.id + "\")'>Modifier</button>" +
+                "<button class='btn-mini btn-mini-suppr' onclick='supprimerResident(\"" + r.id + "\")'>Suppr.</button>" +
+                "</span></div>" +
+                "<div class='ligne-residents-detail'>" +
+                (r.statut === "Absent" ? "🚫 Absent — " : "") +
+                "Texture : " + escapeHtml(r.textureMidi) + (r.textureMidi !== r.textureSoir ? " (midi) / " + escapeHtml(r.textureSoir) + " (soir)" : "") +
+                (r.regime ? "<br>Régime : " + escapeHtml(r.regime) : "") +
+                (r.aversion ? "<br>Aversions : " + escapeHtml(r.aversion) : "") +
+                "</div></div>";
+        }).join("");
+    }
+
+    // ===== FEUILLE REGIMES =====
+    function residentsPresents() {
+        return _residents.filter(function (r) { return (r.statut || "Présent") === "Présent"; });
+    }
+
+    function afficherFeuilleRegimes() {
+        var presents = residentsPresents();
+        var avecRegime = presents.filter(function (r) { return r.regime && r.regime.trim() !== ""; });
+        var zone = document.getElementById("zoneRegimes");
+
+        if (avecRegime.length === 0) {
+            zone.innerHTML = "<div class='msg-vide'>Aucun résident présent avec un régime médical spécifique actuellement.</div>";
+            return;
+        }
+
+        var unites = [];
+        avecRegime.forEach(function (r) {
+            var u = r.unite || "Non précisé";
+            if (unites.indexOf(u) === -1) unites.push(u);
+        });
+
+        var html = "";
+        unites.forEach(function (unite) {
+            var liste = avecRegime.filter(function (r) { return (r.unite || "Non précisé") === unite; });
+            liste.sort(function (a, b) { return (a.chambre || "").localeCompare((b.chambre || ""), "fr", { numeric: true }); });
+            html += "<div class='section-titre'>🏢 " + escapeHtml(unite) + "</div>";
+            html += "<table><thead><tr><th>Chambre</th><th>Texture</th><th>Régime</th></tr></thead><tbody>";
+            liste.forEach(function (r) {
+                var texMidi = r.textureMidi || "Normal", texSoir = r.textureSoir || "Normal";
+                var texte = texMidi === texSoir ? texMidi : ("Midi: " + texMidi + " / Soir: " + texSoir);
+                var couleur = (texMidi !== "Normal" || texSoir !== "Normal") ? "color:var(--bleu-fonce);font-weight:700;" : "";
+                html += "<tr><td><b>Ch. " + escapeHtml(r.chambre) + "</b></td>" +
+                    "<td style='" + couleur + "'>" + escapeHtml(texte) + "</td>" +
+                    "<td><b>" + escapeHtml(r.regime) + "</b></td></tr>";
+            });
+            html += "</tbody></table>";
+        });
+        zone.innerHTML = html;
+    }
+
+    // ===== SAISIE D'INGREDIENTS (étiquettes + autocomplétion) =====
+    var _ingredientsSaisis = [];
+
+    function rendreEtiquettes() {
+        var zone = document.getElementById("apercuIngredients");
+        zone.innerHTML = _ingredientsSaisis.map(function (ing, idx) {
+            return "<span class='mot-choisi' onmousedown='event.preventDefault(); retirerIngredient(" + idx + ")'>" +
+                escapeHtml(ing) + "</span><span class='mot-separateur'>·</span>";
+        }).join("");
+    }
+    function ajouterIngredientDepuisTexte(texte) {
+        var val = (texte || "").trim();
+        if (!val) return;
+        _ingredientsSaisis.push(val);
+        rendreEtiquettes();
+    }
+    function retirerIngredient(idx) { _ingredientsSaisis.splice(idx, 1); rendreEtiquettes(); }
+
+    function gererSaisieVirgule() {
+        var input = document.getElementById("inputIngredients");
+        if (input.value.indexOf(",") !== -1) {
+            var morceaux = input.value.split(",");
+            var dernier = morceaux.pop();
+            morceaux.forEach(function (m) { ajouterIngredientDepuisTexte(m); });
+            input.value = dernier;
+        }
+    }
+    function gererToucheIngredient(event) {
+        var input = document.getElementById("inputIngredients");
+        if (event.key === "Enter" || event.key === ",") {
+            event.preventDefault();
+            ajouterIngredientDepuisTexte(input.value);
+            input.value = "";
+            masquerSuggestions();
+        } else if (event.key === "Backspace" && input.value === "" && _ingredientsSaisis.length > 0) {
+            retirerIngredient(_ingredientsSaisis.length - 1);
+        }
+    }
+
+    function listeMotsRegimesAversions() {
+        var presents = residentsPresents();
+        var vus = {}, liste = [];
+        presents.forEach(function (r) {
+            [r.regime, r.aversion].forEach(function (champ) {
+                if (!champ) return;
+                champ.split(",").map(function (m) { return m.trim(); }).filter(Boolean).forEach(function (mot) {
+                    var cle = mot.toLowerCase();
+                    if (!vus[cle]) { vus[cle] = true; liste.push(mot); }
+                });
+            });
+        });
+        return liste;
+    }
+
+    function afficherSuggestions() {
+        var input = document.getElementById("inputIngredients");
+        var saisie = normaliser(input.value.trim());
+        var zone = document.getElementById("listeSuggestions");
+        if (saisie.length < 2) { zone.style.display = "none"; return; }
+        var correspondances = listeMotsRegimesAversions().filter(function (mot) {
+            return normaliser(mot).indexOf(saisie) !== -1;
+        }).slice(0, 8);
+        if (correspondances.length === 0) { zone.style.display = "none"; return; }
+        zone.innerHTML = correspondances.map(function (mot) {
+            return "<div class='suggestion-item' onmousedown='selectionnerSuggestion(\"" +
+                mot.replace(/"/g, "&quot;").replace(/'/g, "\\'") + "\")'>" + escapeHtml(mot) + "</div>";
+        }).join("");
+        zone.style.display = "block";
+    }
+    function selectionnerSuggestion(mot) {
+        ajouterIngredientDepuisTexte(mot);
+        document.getElementById("inputIngredients").value = "";
+        masquerSuggestions();
+        document.getElementById("inputIngredients").focus();
+    }
+    function masquerSuggestions() { document.getElementById("listeSuggestions").style.display = "none"; }
+    function masquerSuggestionsDifferees() { setTimeout(masquerSuggestions, 150); }
+
+    function normaliser(txt) {
+        return (txt || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+    function contientTexte(texteNorm, ingredientNorm) {
+        if (!texteNorm || !ingredientNorm) return false;
+        return texteNorm.indexOf(ingredientNorm) !== -1;
+    }
+
+    // ===== SAUVEGARDE PAR JOUR (locale) =====
+    var _jourSelectionne = null;
+
+    function chargerMenusJours() {
+        try { return JSON.parse(localStorage.getItem(CLE_MENUS_JOURS)) || {}; }
+        catch (e) { return {}; }
+    }
+    function sauvegarderMenusJours(obj) { localStorage.setItem(CLE_MENUS_JOURS, JSON.stringify(obj)); }
+
+    function selectionnerJour(jour) {
+        _jourSelectionne = jour;
+        document.querySelectorAll(".jour-btn").forEach(function (b) { b.classList.toggle("actif", b.dataset.jour === jour); });
+        var menus = chargerMenusJours();
+        var msg = document.getElementById("msgJour");
+        if (menus[jour] && Array.isArray(menus[jour].ingredients) && menus[jour].ingredients.length > 0) {
+            _ingredientsSaisis = menus[jour].ingredients.slice();
+            rendreEtiquettes();
+            msg.textContent = "Liste retrouvée pour ce jour (" + _ingredientsSaisis.length + " ingrédient(s)).";
+        } else {
+            _ingredientsSaisis = [];
+            rendreEtiquettes();
+            msg.textContent = "Aucune liste enregistrée pour ce jour.";
+        }
+    }
+
+    function enregistrerJourActuel() {
+        if (!_jourSelectionne) {
+            document.getElementById("msgJour").textContent = "Choisissez d'abord un jour ci-dessus.";
+            return;
+        }
+        var enCours = document.getElementById("inputIngredients").value;
+        if (enCours && enCours.trim()) { ajouterIngredientDepuisTexte(enCours); document.getElementById("inputIngredients").value = ""; }
+        var menus = chargerMenusJours();
+        menus[_jourSelectionne] = { ingredients: _ingredientsSaisis.slice(), date: new Date().toISOString() };
+        sauvegarderMenusJours(menus);
+        document.getElementById("msgJour").textContent = "✅ Enregistré pour " + _jourSelectionne + ".";
+    }
+
+    // ===== VERIFICATION DU MENU =====
+    function verifierMenu() {
+        var enCours = document.getElementById("inputIngredients").value;
+        if (enCours && enCours.trim()) { ajouterIngredientDepuisTexte(enCours); document.getElementById("inputIngredients").value = ""; }
+        var ingredients = _ingredientsSaisis.slice();
+
+        document.querySelectorAll(".panneau").forEach(function (p) { p.classList.toggle("actif", p.id === "panneau-verif-resultats"); });
+        appliquerPaysageSelonPanneau(true);
+
+        var zone = document.getElementById("zoneResultatVerif");
+        if (ingredients.length === 0) {
+            zone.innerHTML = "<div class='msg-vide'>Ajoutez au moins un ingrédient.</div>";
+            return;
+        }
+
+        var presents = residentsPresents();
+        var alertesMap = {};
+        _ingredientsSaisis = [];
+        rendreEtiquettes();
+
+        presents.forEach(function (r) {
+            var regimeBrut = r.regime || "", aversionBrut = r.aversion || "";
+            var regime = normaliser(regimeBrut), aversion = normaliser(aversionBrut);
+            var chambre = r.chambre || "?", unite = r.unite || "";
+            var texMidi = r.textureMidi || "Normal", texSoir = r.textureSoir || "Normal";
+            var texteTexture = texMidi === texSoir ? texMidi : ("Midi: " + texMidi + " / Soir: " + texSoir);
+
+            ingredients.forEach(function (ing) {
+                var ingNorm = normaliser(ing);
+                if (!ingNorm) return;
+                var sources = [];
+                var matchRegime = contientTexte(regime, ingNorm);
+                var matchAversion = contientTexte(aversion, ingNorm);
+                if (matchRegime && matchAversion && regimeBrut.trim().toLowerCase() === aversionBrut.trim().toLowerCase()) {
+                    sources.push("régime/aversion : " + regimeBrut);
+                } else {
+                    if (matchRegime) sources.push("régime : " + regimeBrut);
+                    if (matchAversion) sources.push("aversion : " + aversionBrut);
+                }
+                if (sources.length === 0) return;
+                var cle = chambre;
+                if (!alertesMap[cle]) alertesMap[cle] = { chambre: chambre, unite: unite, texture: texteTexture, mots: [], sources: [] };
+                if (alertesMap[cle].mots.indexOf(ing) === -1) alertesMap[cle].mots.push(ing);
+                sources.forEach(function (s) { if (alertesMap[cle].sources.indexOf(s) === -1) alertesMap[cle].sources.push(s); });
+            });
+        });
+
+        var alertes = Object.keys(alertesMap).map(function (k) { return alertesMap[k]; });
+        function prioriteTexture(t) {
+            var tt = (t || "").toLowerCase();
+            if (tt.indexOf("mixé") !== -1) return 0;
+            if (tt.indexOf("haché") !== -1) return 1;
+            if (tt === "normal") return 3;
+            return 2;
+        }
+        alertes.sort(function (a, b) { return prioriteTexture(a.texture) - prioriteTexture(b.texture); });
+
+        if (alertes.length === 0) {
+            zone.innerHTML = "<div class='ok-item'>✅ Aucune incompatibilité détectée avec les régimes et aversions des résidents présents.</div>";
+            return;
+        }
+
+        var html = "<button class='btn-action btn-imprimer' onclick='window.print()' style='margin-bottom:12px;'>🖨️ Imprimer</button>" +
+            "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " chambre(s) concernée(s)</div>";
+        alertes.forEach(function (a) {
+            var badges = a.mots.map(function (m) { return "<span class='alerte-mot'>" + escapeHtml(m) + "</span>"; }).join(" ");
+            html += "<div class='alerte-item'>" +
+                "<div class='alerte-ligne1'><b>Ch. " + escapeHtml(a.chambre) + "</b>" +
+                (a.unite ? "<span class='alerte-unite'>— " + escapeHtml(a.unite) + "</span>" : "") + badges + "</div>" +
+                (a.texture !== "Normal" ? "<div class='alerte-texture-badge'>" + escapeHtml(a.texture) + "</div>" : "") +
+                "<div class='alerte-detail'>Texture : " + escapeHtml(a.texture) + " &nbsp;•&nbsp; " + escapeHtml(a.sources.join(" / ")) + "</div>" +
+                "</div>";
+        });
+        zone.innerHTML = html;
+    }
+
+    // ===== RAPPEL TEXTURE (stocké localement en base64) =====
+    function chargerPdfTexture(event) {
+        var fichier = event.target.files[0];
+        if (!fichier) return;
+        var lecteur = new FileReader();
+        lecteur.onload = function (e) {
+            localStorage.setItem(CLE_PDF, e.target.result);
+            afficherRappelTextureInfo();
+        };
+        lecteur.readAsDataURL(fichier);
+    }
+    function supprimerPdfTexture() {
+        if (!confirm("Supprimer le document actuel ?")) return;
+        localStorage.removeItem(CLE_PDF);
+        afficherRappelTextureInfo();
+    }
+    function afficherRappelTextureInfo() {
+        var pdf = localStorage.getItem(CLE_PDF);
+        var zonePdf = document.getElementById("zoneAffichagePdf");
+        if (pdf) {
+            document.getElementById("zoneTextureInfo").textContent = "Document chargé.";
+            document.getElementById("embedPdfTexture").src = pdf;
+            zonePdf.style.display = "block";
+        } else {
+            document.getElementById("zoneTextureInfo").textContent = "Aucun document chargé.";
+            zonePdf.style.display = "none";
+        }
+    }
+
+    // ===== ECRAN DE VEILLE =====
+    var DELAI_INACTIVITE_MS = 10 * 60 * 1000;
+    var _timerInactivite = null;
+    function demarrerMinuteurInactivite() {
+        clearTimeout(_timerInactivite);
+        _timerInactivite = setTimeout(function () { document.getElementById("ecranVeille").style.display = "flex"; }, DELAI_INACTIVITE_MS);
+    }
+    function reveillerApplication() {
+        document.getElementById("ecranVeille").style.display = "none";
+        demarrerMinuteurInactivite();
+    }
+    ["click", "touchstart", "keydown", "input", "scroll"].forEach(function (evt) {
+        document.addEventListener(evt, function () {
+            if (document.getElementById("ecranVeille").style.display !== "flex") demarrerMinuteurInactivite();
+        }, { passive: true });
+    });
+    demarrerMinuteurInactivite();
+
+    // ===== UTILITAIRES =====
+    function escapeHtml(str) {
+        return (str || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    afficherRappelTextureInfo();
+</script>
+
+</body>
+</html>
