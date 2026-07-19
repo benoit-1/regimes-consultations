@@ -696,7 +696,11 @@
             if (tt === "normal") return 3;
             return 2;
         }
-        alertes.sort(function (a, b) { return prioriteTexture(a.texture) - prioriteTexture(b.texture); });
+        alertes.sort(function (a, b) {
+            var diff = prioriteTexture(a.texture) - prioriteTexture(b.texture);
+            if (diff !== 0) return diff;
+            return (a.chambre || "").localeCompare((b.chambre || ""), "fr", { numeric: true });
+        });
 
         if (alertes.length === 0) {
             zone.innerHTML = "<div class='ok-item'>✅ Aucune incompatibilité détectée avec les régimes et aversions des résidents présents.</div>";
