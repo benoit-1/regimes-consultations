@@ -641,6 +641,7 @@
 
     // ===== SAUVEGARDE PAR DATE PRECISE (locale) =====
     var _dateSelectionnee = null;
+    var _derniersIngredientsVerifies = [];
     var NOMS_JOURS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
     var NOMS_MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
@@ -684,6 +685,24 @@
         menus[_dateSelectionnee] = { ingredients: _ingredientsSaisis.slice(), enregistreLe: new Date().toISOString() };
         sauvegarderMenusJours(menus);
         document.getElementById("msgJour").textContent = "✅ Enregistré pour " + formaterDateAffichage(_dateSelectionnee) + ".";
+    }
+
+    // Enregistre la liste qui vient d'être vérifiée (depuis l'écran de résultats),
+    // pratique pour contrôler d'abord les erreurs avant de sauvegarder
+    function enregistrerDepuisResultats() {
+        var msg = document.getElementById("msgEnregistrerResultats");
+        if (!_dateSelectionnee) {
+            if (msg) msg.textContent = "Choisissez d'abord une date sur l'écran de saisie, puis revérifiez.";
+            return;
+        }
+        if (!_derniersIngredientsVerifies || _derniersIngredientsVerifies.length === 0) {
+            if (msg) msg.textContent = "Aucun ingrédient à enregistrer.";
+            return;
+        }
+        var menus = chargerMenusJours();
+        menus[_dateSelectionnee] = { ingredients: _derniersIngredientsVerifies.slice(), enregistreLe: new Date().toISOString() };
+        sauvegarderMenusJours(menus);
+        if (msg) msg.textContent = "✅ Enregistré pour " + formaterDateAffichage(_dateSelectionnee) + ".";
     }
 
     // ===== CALCUL DES ALERTES (réutilisé pour la vérification simple et le récapitulatif) =====
@@ -765,6 +784,7 @@
         }
 
         var presents = residentsPresents();
+        _derniersIngredientsVerifies = ingredients.slice();
         _ingredientsSaisis = [];
         rendreEtiquettes();
 
@@ -772,8 +792,10 @@
         var enteteDate = _dateSelectionnee
             ? "<div style='font-size:16px;font-weight:800;color:var(--bleu-fonce);margin-bottom:10px;'>📅 " + formaterDateAffichage(_dateSelectionnee) + "</div>"
             : "";
+        var boutonEnregistrer = "<button class='btn-action btn-imprimer' onclick='enregistrerDepuisResultats()' style='margin-bottom:8px;'>💾 Enregistrer pour cette date</button>" +
+            "<div id='msgEnregistrerResultats' style='font-size:11.5px;color:var(--gris-txt);margin-bottom:10px;min-height:14px;'></div>";
         zone.innerHTML = "<button class='btn-action btn-imprimer' onclick='window.print()' style='margin-bottom:12px;'>🖨️ Imprimer</button>" +
-            enteteDate + rendreHtmlAlertes(alertes);
+            enteteDate + boutonEnregistrer + rendreHtmlAlertes(alertes);
     }
 
     // ===== RECAPITULATIF D'UNE SEMAINE =====
