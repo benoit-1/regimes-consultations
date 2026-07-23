@@ -132,6 +132,7 @@
     .btn-mini-suppr { background: var(--rouge-clair); color: var(--rouge); }
     @media print {
         header .onglets, .onglets, footer, #panneau-verif-resultats > .btn-action:first-child,
+        #panneau-recap-resultats > .btn-action:first-child,
         .btn-imprimer, #panneau-residents { display: none !important; }
         body { background: white; }
         .carte { border: none; padding: 0; }
@@ -257,16 +258,8 @@
     <!-- PANNEAU VERIFIER UN MENU -->
     <div class="panneau" id="panneau-verifier">
         <div class="carte">
-            <label class="form-label">Jour du menu</label>
-            <div class="jours-semaine">
-                <button class="jour-btn" data-jour="lundi" onclick="selectionnerJour('lundi')">Lun</button>
-                <button class="jour-btn" data-jour="mardi" onclick="selectionnerJour('mardi')">Mar</button>
-                <button class="jour-btn" data-jour="mercredi" onclick="selectionnerJour('mercredi')">Mer</button>
-                <button class="jour-btn" data-jour="jeudi" onclick="selectionnerJour('jeudi')">Jeu</button>
-                <button class="jour-btn" data-jour="vendredi" onclick="selectionnerJour('vendredi')">Ven</button>
-                <button class="jour-btn" data-jour="samedi" onclick="selectionnerJour('samedi')">Sam</button>
-                <button class="jour-btn" data-jour="dimanche" onclick="selectionnerJour('dimanche')">Dim</button>
-            </div>
+            <label class="form-label">Date du menu</label>
+            <input type="date" id="inputDateMenu" onchange="selectionnerDate(this.value)">
             <div id="msgJour" style="font-size:11.5px;color:var(--gris-txt);margin:8px 0 4px;min-height:14px;"></div>
 
             <label class="form-label" style="margin-top:10px;">Tapez un ingrédient</label>
@@ -282,8 +275,18 @@
             <div style="font-size:11.5px;color:var(--gris-txt);margin-top:10px;">
                 Touchez un résultat proposé, ou appuyez sur <b>Entrée</b> si l'ingrédient n'apparaît pas dans la liste. Touchez un ingrédient déjà ajouté pour le retirer.
             </div>
-            <button class="btn-action btn-imprimer" style="margin-top:12px;" onclick="enregistrerJourActuel()">💾 Enregistrer pour ce jour</button>
+            <button class="btn-action btn-imprimer" style="margin-top:12px;" onclick="enregistrerJourActuel()">💾 Enregistrer pour cette date</button>
             <button class="btn-action" style="margin-top:10px;" onclick="verifierMenu()">🔍 Vérifier</button>
+        </div>
+
+        <div class="carte">
+            <div class="section-titre" style="margin-top:0;">📅 Récapitulatif d'une semaine</div>
+            <div style="font-size:12.5px;color:var(--gris-txt);margin-bottom:10px;">
+                Regroupe les 7 jours à partir de la date choisie, pour envoyer plusieurs jours d'un coup.
+            </div>
+            <label class="form-label" style="margin-top:0;">Date de début</label>
+            <input type="date" id="inputDateDebutRecap">
+            <button class="btn-action" style="margin-top:12px;" onclick="genererRecapSemaine()">📅 Générer le récapitulatif</button>
         </div>
     </div>
 
@@ -293,11 +296,18 @@
         <div class="carte" id="zoneResultatVerif"></div>
     </div>
 
+    <!-- PANNEAU RECAPITULATIF SEMAINE (paysage) -->
+    <div class="panneau" id="panneau-recap-resultats">
+        <button class="btn-action" style="margin-bottom:10px;" onclick="retourSaisieVerif()">← Retour</button>
+        <div class="carte" id="zoneRecapContenu"></div>
+    </div>
+
     <!-- PANNEAU RAPPEL TEXTURE -->
     <div class="panneau" id="panneau-texture">
         <div class="carte" id="carteTexture" style="text-align:center;">
             <div style="font-size:40px;margin-bottom:10px;">📄</div>
             <div id="zoneTextureInfo" style="color:var(--gris-txt);font-size:13.5px;margin-bottom:16px;">Aucun document chargé.</div>
+
             <label class="form-label" style="text-align:left;">Charger un document PDF</label>
             <input type="file" id="inputPdfTexture" accept=".pdf" onchange="chargerPdfTexture(event)">
             <button class="btn-action btn-supprimer" style="margin-top:14px;" onclick="supprimerPdfTexture()">🗑️ Supprimer le document</button>
@@ -629,8 +639,18 @@
         return texteNorm.indexOf(ingredientNorm) !== -1;
     }
 
-    // ===== SAUVEGARDE PAR JOUR (locale) =====
-    var _jourSelectionne = null;
+    // ===== SAUVEGARDE PAR DATE PRECISE (locale) =====
+    var _dateSelectionnee = null;
+    var NOMS_JOURS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+    var NOMS_MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+    function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+    function formatIso(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+    function formaterDateAffichage(iso) {
+        if (!iso) return "";
+        var d = new Date(iso + "T00:00:00");
+        return NOMS_JOURS[d.getDay()] + " " + d.getDate() + " " + NOMS_MOIS[d.getMonth()] + " " + d.getFullYear();
+    }
 
     function chargerMenusJours() {
         try { return JSON.parse(localStorage.getItem(CLE_MENUS_JOURS)) || {}; }
@@ -638,55 +658,37 @@
     }
     function sauvegarderMenusJours(obj) { localStorage.setItem(CLE_MENUS_JOURS, JSON.stringify(obj)); }
 
-    function selectionnerJour(jour) {
-        _jourSelectionne = jour;
-        document.querySelectorAll(".jour-btn").forEach(function (b) { b.classList.toggle("actif", b.dataset.jour === jour); });
+    function selectionnerDate(iso) {
+        _dateSelectionnee = iso;
         var menus = chargerMenusJours();
         var msg = document.getElementById("msgJour");
-        if (menus[jour] && Array.isArray(menus[jour].ingredients) && menus[jour].ingredients.length > 0) {
-            _ingredientsSaisis = menus[jour].ingredients.slice();
+        if (menus[iso] && Array.isArray(menus[iso].ingredients) && menus[iso].ingredients.length > 0) {
+            _ingredientsSaisis = menus[iso].ingredients.slice();
             rendreEtiquettes();
-            msg.textContent = "Liste retrouvée pour ce jour (" + _ingredientsSaisis.length + " ingrédient(s)).";
+            msg.textContent = "Liste retrouvée pour " + formaterDateAffichage(iso) + " (" + _ingredientsSaisis.length + " ingrédient(s)).";
         } else {
             _ingredientsSaisis = [];
             rendreEtiquettes();
-            msg.textContent = "Aucune liste enregistrée pour ce jour.";
+            msg.textContent = "Aucune liste enregistrée pour " + formaterDateAffichage(iso) + ".";
         }
     }
 
     function enregistrerJourActuel() {
-        if (!_jourSelectionne) {
-            document.getElementById("msgJour").textContent = "Choisissez d'abord un jour ci-dessus.";
+        if (!_dateSelectionnee) {
+            document.getElementById("msgJour").textContent = "Choisissez d'abord une date ci-dessus.";
             return;
         }
         var enCours = document.getElementById("inputIngredients").value;
         if (enCours && enCours.trim()) { ajouterIngredientDepuisTexte(enCours); document.getElementById("inputIngredients").value = ""; }
         var menus = chargerMenusJours();
-        menus[_jourSelectionne] = { ingredients: _ingredientsSaisis.slice(), date: new Date().toISOString() };
+        menus[_dateSelectionnee] = { ingredients: _ingredientsSaisis.slice(), enregistreLe: new Date().toISOString() };
         sauvegarderMenusJours(menus);
-        document.getElementById("msgJour").textContent = "✅ Enregistré pour " + _jourSelectionne + ".";
+        document.getElementById("msgJour").textContent = "✅ Enregistré pour " + formaterDateAffichage(_dateSelectionnee) + ".";
     }
 
-    // ===== VERIFICATION DU MENU =====
-    function verifierMenu() {
-        var enCours = document.getElementById("inputIngredients").value;
-        if (enCours && enCours.trim()) { ajouterIngredientDepuisTexte(enCours); document.getElementById("inputIngredients").value = ""; }
-        var ingredients = _ingredientsSaisis.slice();
-
-        document.querySelectorAll(".panneau").forEach(function (p) { p.classList.toggle("actif", p.id === "panneau-verif-resultats"); });
-        appliquerPaysageSelonPanneau(true);
-
-        var zone = document.getElementById("zoneResultatVerif");
-        if (ingredients.length === 0) {
-            zone.innerHTML = "<div class='msg-vide'>Ajoutez au moins un ingrédient.</div>";
-            return;
-        }
-
-        var presents = residentsPresents();
+    // ===== CALCUL DES ALERTES (réutilisé pour la vérification simple et le récapitulatif) =====
+    function calculerAlertes(ingredients, presents) {
         var alertesMap = {};
-        _ingredientsSaisis = [];
-        rendreEtiquettes();
-
         presents.forEach(function (r) {
             var regimeBrut = r.regime || "", aversionBrut = r.aversion || "";
             var regime = normaliser(regimeBrut), aversion = normaliser(aversionBrut);
@@ -727,14 +729,14 @@
             if (diff !== 0) return diff;
             return (a.chambre || "").localeCompare((b.chambre || ""), "fr", { numeric: true });
         });
+        return alertes;
+    }
 
+    function rendreHtmlAlertes(alertes) {
         if (alertes.length === 0) {
-            zone.innerHTML = "<div class='ok-item'>✅ Aucune incompatibilité détectée avec les régimes et aversions des résidents présents.</div>";
-            return;
+            return "<div class='ok-item'>✅ Aucune incompatibilité détectée avec les régimes et aversions des résidents présents.</div>";
         }
-
-        var html = "<button class='btn-action btn-imprimer' onclick='window.print()' style='margin-bottom:12px;'>🖨️ Imprimer</button>" +
-            "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " chambre(s) concernée(s)</div>";
+        var html = "<div class='section-titre' style='margin-top:0;'>⚠️ " + alertes.length + " chambre(s) concernée(s)</div>";
         alertes.forEach(function (a) {
             var badges = a.mots.map(function (m) { return "<span class='alerte-mot'>" + escapeHtml(m) + "</span>"; }).join(" ");
             html += "<div class='alerte-item'>" +
@@ -744,7 +746,64 @@
                 "<div class='alerte-detail'>Texture : " + escapeHtml(a.texture) + " &nbsp;•&nbsp; " + escapeHtml(a.sources.join(" / ")) + "</div>" +
                 "</div>";
         });
-        zone.innerHTML = html;
+        return html;
+    }
+
+    // ===== VERIFICATION DU MENU (jour unique) =====
+    function verifierMenu() {
+        var enCours = document.getElementById("inputIngredients").value;
+        if (enCours && enCours.trim()) { ajouterIngredientDepuisTexte(enCours); document.getElementById("inputIngredients").value = ""; }
+        var ingredients = _ingredientsSaisis.slice();
+
+        document.querySelectorAll(".panneau").forEach(function (p) { p.classList.toggle("actif", p.id === "panneau-verif-resultats"); });
+        appliquerPaysageSelonPanneau(true);
+
+        var zone = document.getElementById("zoneResultatVerif");
+        if (ingredients.length === 0) {
+            zone.innerHTML = "<div class='msg-vide'>Ajoutez au moins un ingrédient.</div>";
+            return;
+        }
+
+        var presents = residentsPresents();
+        _ingredientsSaisis = [];
+        rendreEtiquettes();
+
+        var alertes = calculerAlertes(ingredients, presents);
+        var enteteDate = _dateSelectionnee
+            ? "<div style='font-size:16px;font-weight:800;color:var(--bleu-fonce);margin-bottom:10px;'>📅 " + formaterDateAffichage(_dateSelectionnee) + "</div>"
+            : "";
+        zone.innerHTML = "<button class='btn-action btn-imprimer' onclick='window.print()' style='margin-bottom:12px;'>🖨️ Imprimer</button>" +
+            enteteDate + rendreHtmlAlertes(alertes);
+    }
+
+    // ===== RECAPITULATIF D'UNE SEMAINE =====
+    function genererRecapSemaine() {
+        var dateDebut = document.getElementById("inputDateDebutRecap").value;
+        if (!dateDebut) { alert("Choisissez d'abord une date de début."); return; }
+
+        var menus = chargerMenusJours();
+        var presents = residentsPresents();
+        var dateBase = new Date(dateDebut + "T00:00:00");
+
+        document.querySelectorAll(".panneau").forEach(function (p) { p.classList.toggle("actif", p.id === "panneau-recap-resultats"); });
+        appliquerPaysageSelonPanneau(true);
+
+        var html = "<button class='btn-action btn-imprimer' onclick='window.print()' style='margin-bottom:12px;'>🖨️ Imprimer tout</button>";
+        for (var i = 0; i < 7; i++) {
+            var d = new Date(dateBase);
+            d.setDate(d.getDate() + i);
+            var iso = formatIso(d);
+            html += "<div style='font-size:16px;font-weight:800;color:var(--bleu-fonce);margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--bleu-clair);'>📅 " + formaterDateAffichage(iso) + "</div>";
+
+            var entree = menus[iso];
+            if (!entree || !Array.isArray(entree.ingredients) || entree.ingredients.length === 0) {
+                html += "<div class='msg-vide'>Aucune liste enregistrée pour ce jour.</div>";
+                continue;
+            }
+            var alertes = calculerAlertes(entree.ingredients, presents);
+            html += rendreHtmlAlertes(alertes);
+        }
+        document.getElementById("zoneRecapContenu").innerHTML = html;
     }
 
     // ===== RAPPEL TEXTURE (stocké localement en base64) =====
